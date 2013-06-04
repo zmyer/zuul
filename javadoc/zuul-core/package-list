@@ -1,0 +1,9 @@
+com.netflix.zuul
+com.netflix.zuul.constants
+com.netflix.zuul.context
+com.netflix.zuul.exception
+com.netflix.zuul.filters
+com.netflix.zuul.groovy
+com.netflix.zuul.http
+com.netflix.zuul.monitoring
+com.netflix.zuul.util

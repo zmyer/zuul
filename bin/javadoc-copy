@@ -1,0 +1,13 @@
+#!/bin/bash -e
+
+# pushes javadoc to gh-pages branch
+
+for d in `gfind -mindepth 2 -name 'javadoc' -path '*docs*' -type d`; do
+  echo $d
+  module=`echo $d | egrep -o "zuul-[a-z-]+"`
+  #echo "cp -r $d/ javadoc/$module"
+  dest="javadoc/$module"
+  mkdir -pv $dest
+  rsync -aP $d/ $dest
+  echo
+done
