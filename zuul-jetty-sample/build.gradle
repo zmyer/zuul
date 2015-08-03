@@ -1,6 +1,8 @@
+apply plugin: 'groovy'
 
 dependencies {
     compile project(':zuul-core')
+    compile project(':zuul-servletapi')
 
     compile(group: 'org.eclipse.jetty.aggregate', name: 'jetty-all', version: "${versions_jetty9}")
     compile(group: 'org.eclipse.jetty', name: 'jetty-alpn-server', version: "${versions_jetty9}")
@@ -12,3 +14,15 @@ dependencies {
     compile 'org.mockito:mockito-all:1.9.+'
 }
 
+sourceSets {
+    test {
+        java {
+            srcDirs  = ['src/main/java']
+            include '**/*.java'
+        }
+        groovy {
+            srcDirs  = ['src/main/filters', 'src/main/groovy', 'src/test/groovy']
+            include '**/*.groovy'
+        }
+    }
+}

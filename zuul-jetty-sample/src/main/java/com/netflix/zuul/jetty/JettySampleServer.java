@@ -59,9 +59,9 @@ public class JettySampleServer
 
         // SSL Context Factory for HTTPS and HTTP/2
         SslContextFactory sslContextFactory = new SslContextFactory();
-        sslContextFactory.setKeyStorePath("conf/keystore.jks");
-        sslContextFactory.setKeyStorePassword("OBF:1vny1zlo1x8e1vnw1vn61x8g1zlu1vn4");
-        sslContextFactory.setKeyManagerPassword("OBF:1u2u1wml1z7s1z7a1wnl1u2g");
+        sslContextFactory.setKeyStorePath("/Users/michaels/Projects/oss-zuul-1/zuul-jetty-sample/conf/keystore.jks");
+        sslContextFactory.setKeyStorePassword("netflix");
+        sslContextFactory.setKeyManagerPassword("netflix");
 
         // HTTPS Configuration
         HttpConfiguration https_config = new HttpConfiguration(http_config);
