@@ -3,21 +3,30 @@ package com.netflix.zuul.filters.endpoints;
 import com.netflix.zuul.context.Debug;
 import com.netflix.zuul.context.SessionContext;
 import com.netflix.zuul.exception.ZuulException;
+import com.netflix.zuul.filters.FilterComplete;
 import com.netflix.zuul.filters.http.HttpAsyncEndpoint;
+import com.netflix.zuul.message.MessageComponent;
+import com.netflix.zuul.message.MessageContent;
 import com.netflix.zuul.message.http.HttpRequestMessage;
 import com.netflix.zuul.message.http.HttpResponseMessage;
 import com.netflix.zuul.message.http.HttpResponseMessageImpl;
 import com.netflix.zuul.monitoring.MonitoringHelper;
 import com.netflix.zuul.origins.Origin;
 import com.netflix.zuul.origins.OriginManager;
-import org.junit.Assert;
+import com.netflix.zuul.origins.OriginRequest;
+import io.netty.util.concurrent.DefaultPromise;
+import io.netty.util.concurrent.Promise;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
-import rx.Observable;
+
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.when;
 
 /**
  * General-purpose Proxy endpoint implementation with both async and sync/blocking methods.
@@ -31,33 +40,76 @@ import rx.Observable;
 public class NfProxyEndpoint extends HttpAsyncEndpoint
 {
     @Override
-    public Observable<HttpResponseMessage> applyAsync(HttpRequestMessage request)
+    public void applyAsync(MessageComponent component, FilterComplete callback)
+    {
+        if (component instanceof HttpRequestMessage) {
+            applyForHttpRequest((HttpRequestMessage) component, callback);
+        }
+        else if (component instanceof MessageContent) {
+            applyForContent((MessageContent) component, callback);
+        }
+        else {
+            throw new IllegalArgumentException("Unsupported type of MessageComponent! " + String.valueOf(component));
+        }
+    }
+    
+    protected void applyForHttpRequest(HttpRequestMessage request, FilterComplete callback)
     {
         SessionContext context = request.getContext();
+        Debug.writeDebugRequest(context, request, false);
 
-        return Debug.writeDebugRequest(context, request, false)
-                .map(bool -> {
-                        // Get the Origin.
-                        Origin origin = getOrigin(request);
-                        return origin;
-                })
-                .flatMap(origin -> {
-                    // Add execution of the request to the Observable chain, and return.
-                    Observable<HttpResponseMessage> respObs = origin.request(request);
-                    return respObs;
-                })
-                .doOnNext(originResp -> {
-                    // Store the status from origin (in case it's later overwritten).
-                    context.put("origin_http_status", Integer.toString(originResp.getStatus()));
-                })
-                .flatMap(originResp -> {
-                    return Debug.writeDebugResponse(context, originResp, true).map(bool -> originResp);
-                });
+        // Get the Origin.
+        Origin origin = getOrigin(request);
+
+        // Start making the request.
+        OriginRequest originRequest = origin.request(request);
+        context.set("origin_request", originRequest);
+        
+        Promise<HttpResponseMessage> promise = originRequest.promise();
+        if (promise.isDone()) {
+            handleCompletion(context, request, callback, promise);
+        }
+        else {
+            promise.addListener(future -> {
+                handleCompletion(context, request, callback, promise);
+            });
+        }
     }
-
-    public HttpResponseMessage apply(HttpRequestMessage request)
+    
+    protected void applyForContent(MessageContent messageContent, FilterComplete callback)
     {
-        return applyAsync(request).toBlocking().first();
+        OriginRequest originRequest = (OriginRequest) messageContent.message().getContext().get("origin_request");
+        if (originRequest == null) {
+            throw new IllegalStateException("Received MessageContent to proxy, but no OriginRequest has been setup yet!");
+        }
+        
+        originRequest.writeContent(messageContent, callback);
+    }
+    
+    protected void handleCompletion(SessionContext context, 
+                                    HttpRequestMessage request, 
+                                    FilterComplete<HttpResponseMessage> callback,
+                                    Promise<HttpResponseMessage> promise)
+    {
+        if (promise.isSuccess()) {
+            HttpResponseMessage response;
+            try {
+                response = promise.get();
+            }
+            catch(Exception e) {
+                context.setError(promise.cause());
+                HttpResponseMessageImpl.defaultErrorResponse(request);
+                return;
+            }
+            
+            context.put("origin_http_status", Integer.toString(response.getStatus()));
+            Debug.writeDebugResponse(context, response, true);
+            callback.invoke(response);
+        }
+        else {
+            context.setError(promise.cause());
+            HttpResponseMessageImpl.defaultErrorResponse(request);
+        }
     }
 
     protected Origin getOrigin(HttpRequestMessage request)
@@ -80,6 +132,8 @@ public class NfProxyEndpoint extends HttpAsyncEndpoint
         @Mock
         private Origin origin;
         @Mock
+        private OriginRequest originRequest;
+        @Mock
         private HttpRequestMessage request;
         private NfProxyEndpoint filter;
         private SessionContext ctx;
@@ -91,10 +145,15 @@ public class NfProxyEndpoint extends HttpAsyncEndpoint
             MonitoringHelper.initMocks();
             filter = new NfProxyEndpoint();
             ctx = new SessionContext();
-            Mockito.when(request.getContext()).thenReturn(ctx);
+            when(request.getContext()).thenReturn(ctx);
             response = new HttpResponseMessageImpl(ctx, request, 202);
+            
+            Promise<HttpResponseMessage> promise = new MockResponsePromise(response);
+            when(originRequest.promise()).thenReturn(promise);
 
-            Mockito.when(originManager.getOrigin("an-origin")).thenReturn(origin);
+            when(origin.request(request)).thenReturn(originRequest);
+
+            when(originManager.getOrigin("an-origin")).thenReturn(origin);
             ctx.put("origin_manager", originManager);
         }
 
@@ -102,38 +161,45 @@ public class NfProxyEndpoint extends HttpAsyncEndpoint
         public void testApplyAsync()
         {
             ctx.setRouteVIP("an-origin");
-            Mockito.when(origin.request(request)).thenReturn(Observable.just(response));
 
-            Observable<HttpResponseMessage> respObs = filter.applyAsync(request);
-            respObs.toBlocking().single();
-
-            Assert.assertEquals("202", ctx.get("origin_http_status"));
-        }
-
-        @Test
-        public void testApply()
-        {
-            ctx.setRouteVIP("an-origin");
-            Mockito.when(origin.request(request)).thenReturn(Observable.just(response));
-
-            filter.apply(request);
-
-            Assert.assertEquals("202", ctx.get("origin_http_status"));
+            filter.applyAsync(request, msg -> {
+                if (msg instanceof HttpResponseMessage) {
+                    HttpResponseMessage resp = (HttpResponseMessage) msg; 
+                    assertEquals(202, resp.getStatus());
+                    assertEquals("202", ctx.get("origin_http_status"));
+                }
+            });
         }
 
         @Test
         public void testApply_NoOrigin()
         {
             ctx.setRouteVIP("a-different-origin");
-            try {
-                Observable<HttpResponseMessage> respObs = filter.applyAsync(request);
-                respObs.toBlocking().single();
-                Assert.fail();
-            }
-            catch (Exception ZuulException) {
-                Assert.assertTrue(true);
-            }
 
+            filter.applyAsync(request, msg -> {
+                assertNotNull(msg.getContext().getError());
+            });
+        }
+    }
+    
+    static class MockResponsePromise extends DefaultPromise<HttpResponseMessage>
+    {
+        private final HttpResponseMessage response;
+        
+        MockResponsePromise(HttpResponseMessage response) {
+            super();
+            this.response = response;
+        }
+
+        @Override
+        protected void checkDeadLock() {
+            // No check
+        }
+
+        @Override
+        public HttpResponseMessage get() throws InterruptedException, ExecutionException
+        {
+            return response;
         }
     }
 }

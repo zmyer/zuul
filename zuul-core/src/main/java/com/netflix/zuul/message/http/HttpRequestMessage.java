@@ -21,7 +21,6 @@
 package com.netflix.zuul.message.http;
 
 import com.netflix.zuul.message.ZuulMessage;
-import rx.Observable;
 
 /**
  * User: Mike Smith
@@ -43,8 +42,6 @@ public interface HttpRequestMessage extends HttpRequestInfo
     void setPort(int port);
 
     void setServerName(String serverName);
-
-    Observable<byte[]> bufferBody();
 
     ZuulMessage clone();
 

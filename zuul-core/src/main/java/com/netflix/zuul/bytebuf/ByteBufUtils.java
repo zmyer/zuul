@@ -15,6 +15,11 @@
  */
 package com.netflix.zuul.bytebuf;
 
+import com.netflix.zuul.context.SessionContext;
+import com.netflix.zuul.filters.FilterComplete;
+import com.netflix.zuul.message.MessageContent;
+import com.netflix.zuul.message.MessageContentImpl;
+import com.netflix.zuul.message.ZuulMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
@@ -25,7 +30,9 @@ import rx.observables.StringObservable;
 import rx.observers.TestSubscriber;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 
 /**
  * User: michaels@netflix.com
@@ -34,6 +41,8 @@ import java.io.InputStream;
  */
 public class ByteBufUtils
 {
+    private static final int BODY_STREAM_BUFFER_SIZE = 256;
+    
     public static byte[] toBytes(ByteBuf bb)
     {
         // Set the body on Request object.
@@ -45,6 +54,33 @@ public class ByteBufUtils
         }
         catch (Exception e) {
             throw new RuntimeException("Error buffering message body!", e);
+        }
+    }
+
+    public static void bodyInputStreamToFilterCallbacks(ZuulMessage msg,
+                                                    InputStream bodyInputStream,
+                                                    FilterComplete callback)
+    {
+        SessionContext context = msg.getContext();
+
+        byte[] buffer = new byte[BODY_STREAM_BUFFER_SIZE];
+        try {
+            MessageContent content;
+            int count = bodyInputStream.read(buffer);
+            if (count == -1) {
+                content = MessageContentImpl.createEmptyLastContent(msg);
+            }
+            else if (count < BODY_STREAM_BUFFER_SIZE) {
+                content = new MessageContentImpl(msg, Unpooled.wrappedBuffer(Arrays.copyOf(buffer, count)), false);
+            }
+            else {
+                content = new MessageContentImpl(msg, Unpooled.wrappedBuffer(buffer), false);
+            }
+
+            callback.invoke(content);
+        }
+        catch (IOException e) {
+            context.setError(e);
         }
     }
 

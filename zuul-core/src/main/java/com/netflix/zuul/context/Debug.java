@@ -19,23 +19,17 @@ import com.netflix.zuul.message.Header;
 import com.netflix.zuul.message.Headers;
 import com.netflix.zuul.message.ZuulMessage;
 import com.netflix.zuul.message.http.*;
-import com.netflix.zuul.util.HttpUtils;
-import org.apache.commons.io.IOUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.zip.GZIPInputStream;
 
 import static org.junit.Assert.*;
 
@@ -162,82 +156,35 @@ public class Debug {
 
     }
 
-    public static Observable<Boolean> writeDebugRequest(SessionContext context,
+    public static void writeDebugRequest(SessionContext context,
                                                                 HttpRequestInfo request, boolean isInbound)
     {
-        Observable<Boolean> obs = null;
         if (Debug.debugRequest(context)) {
             String prefix = isInbound ? "REQUEST_INBOUND" : "REQUEST_OUTBOUND";
             String arrow = ">";
 
             Debug.addRequestDebug(context, String.format("%s:: %s LINE: %s %s %s",
                     prefix, arrow, request.getMethod().toUpperCase(), request.getPathAndQuery(), request.getProtocol()));
-            obs = Debug.writeDebugMessage(context, request, prefix, arrow);
+            Debug.writeDebugMessage(context, request, prefix, arrow);
         }
-
-        if (obs == null)
-            obs = Observable.just(Boolean.FALSE);
-
-        return obs;
     }
 
-    public static Observable<Boolean> writeDebugResponse(SessionContext context,
-                                                                  HttpResponseInfo response, boolean isInbound)
+    public static void writeDebugResponse(SessionContext context, HttpResponseInfo response, boolean isInbound)
     {
-        Observable<Boolean> obs = null;
         if (Debug.debugRequest(context)) {
             String prefix = isInbound ? "RESPONSE_INBOUND" : "RESPONSE_OUTBOUND";
             String arrow = "<";
 
             Debug.addRequestDebug(context, String.format("%s:: %s STATUS: %s", prefix, arrow, response.getStatus()));
-            obs = Debug.writeDebugMessage(context, response, prefix, arrow);
+            Debug.writeDebugMessage(context, response, prefix, arrow);
         }
-
-        if (obs == null)
-            obs = Observable.just(Boolean.FALSE);
-
-        return obs;
     }
 
-    public static Observable<Boolean> writeDebugMessage(SessionContext context, ZuulMessage msg,
+    public static void writeDebugMessage(SessionContext context, ZuulMessage msg,
                                                             String prefix, String arrow)
     {
-        Observable<Boolean> obs = null;
-
         for (Header header : msg.getHeaders().entries()) {
             Debug.addRequestDebug(context, String.format("%s:: %s HDR: %s:%s", prefix, arrow, header.getKey(), header.getValue()));
-        }
-
-        // Capture the response body into a Byte array for later usage.
-        if (msg.hasBody()) {
-            if (! Debug.debugRequestHeadersOnly(context)) {
-                // Convert body to a String and add to debug log.
-                obs = msg.bufferBody().map((bodyBytes) -> {
-                    String body = Debug.bodyToText(bodyBytes, msg.getHeaders());
-                    Debug.addRequestDebug(context, String.format("%s:: %s BODY: %s", prefix, arrow, body));
-                    return Boolean.TRUE;
-                });
-            }
-        }
-
-        if (obs == null)
-            obs = Observable.just(Boolean.FALSE);
-
-        return obs;
-    }
-
-    public static String bodyToText(byte[] bodyBytes, Headers headers)
-    {
-        try {
-            if (HttpUtils.isGzipped(headers)) {
-                GZIPInputStream gzIn = new GZIPInputStream(new ByteArrayInputStream(bodyBytes));
-                bodyBytes = IOUtils.toByteArray(gzIn);
-            }
-            return IOUtils.toString(bodyBytes, "UTF-8");
-        }
-        catch (IOException e) {
-            LOG.error("Error reading message body for debugging.", e);
-            return "ERROR READING MESSAGE BODY!";
         }
     }
 
@@ -290,7 +237,7 @@ public class Debug {
         {
             ctx.setDebugRequest(true);
             ctx.setDebugRequestHeadersOnly(true);
-            Debug.writeDebugRequest(ctx, request, true).toBlocking().single();
+            Debug.writeDebugRequest(ctx, request, true);
 
             List<String> debugLines = Debug.getRequestDebug(ctx);
             assertEquals(2, debugLines.size());
@@ -303,7 +250,7 @@ public class Debug {
         {
             ctx.setDebugRequest(true);
             ctx.setDebugRequestHeadersOnly(true);
-            Debug.writeDebugRequest(ctx, request, false).toBlocking().single();
+            Debug.writeDebugRequest(ctx, request, false);
 
             List<String> debugLines = Debug.getRequestDebug(ctx);
             assertEquals(2, debugLines.size());
@@ -312,25 +259,11 @@ public class Debug {
         }
 
         @Test
-        public void testWriteRequestDebug_WithBody()
-        {
-            ctx.setDebugRequest(true);
-            ctx.setDebugRequestHeadersOnly(false);
-            Debug.writeDebugRequest(ctx, request, true).toBlocking().single();
-
-            List<String> debugLines = Debug.getRequestDebug(ctx);
-            assertEquals(3, debugLines.size());
-            assertEquals("REQUEST_INBOUND:: > LINE: POST /some/where?k1=v1 HTTP/1.1", debugLines.get(0));
-            assertEquals("REQUEST_INBOUND:: > HDR: lah:deda", debugLines.get(1));
-            assertEquals("REQUEST_INBOUND:: > BODY: some text", debugLines.get(2));
-        }
-
-        @Test
         public void testWriteInboundResponseDebug()
         {
             ctx.setDebugRequest(true);
             ctx.setDebugRequestHeadersOnly(true);
-            Debug.writeDebugResponse(ctx, response, true).toBlocking().single();
+            Debug.writeDebugResponse(ctx, response, true);
 
             List<String> debugLines = Debug.getRequestDebug(ctx);
             assertEquals(2, debugLines.size());
@@ -343,26 +276,12 @@ public class Debug {
         {
             ctx.setDebugRequest(true);
             ctx.setDebugRequestHeadersOnly(true);
-            Debug.writeDebugResponse(ctx, response, false).toBlocking().single();
+            Debug.writeDebugResponse(ctx, response, false);
 
             List<String> debugLines = Debug.getRequestDebug(ctx);
             assertEquals(2, debugLines.size());
             assertEquals("RESPONSE_OUTBOUND:: < STATUS: 200", debugLines.get(0));
             assertEquals("RESPONSE_OUTBOUND:: < HDR: lah:deda", debugLines.get(1));
-        }
-
-        @Test
-        public void testWriteResponseDebug_WithBody()
-        {
-            ctx.setDebugRequest(true);
-            ctx.setDebugRequestHeadersOnly(false);
-            Debug.writeDebugResponse(ctx, response, true).toBlocking().single();
-
-            List<String> debugLines = Debug.getRequestDebug(ctx);
-            assertEquals(3, debugLines.size());
-            assertEquals("RESPONSE_INBOUND:: < STATUS: 200", debugLines.get(0));
-            assertEquals("RESPONSE_INBOUND:: < HDR: lah:deda", debugLines.get(1));
-            assertEquals("RESPONSE_INBOUND:: < BODY: response text", debugLines.get(2));
         }
     }
 }

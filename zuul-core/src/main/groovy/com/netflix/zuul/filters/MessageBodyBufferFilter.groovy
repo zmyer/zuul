@@ -25,7 +25,7 @@ import rx.Observable
  * Date: 5/28/15
  * Time: 10:54 AM
  */
-public abstract class MessageBodyBufferFilter extends BaseFilter<ZuulMessage, ZuulMessage>
+public abstract class MessageBodyBufferFilter extends BaseAsyncFilter<ZuulMessage, ZuulMessage>
 {
     private static final Logger LOG = LoggerFactory.getLogger(MessageBodyBufferFilter.class);
 

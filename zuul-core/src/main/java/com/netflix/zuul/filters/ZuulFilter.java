@@ -15,17 +15,16 @@
  */
 package com.netflix.zuul.filters;
 
-import com.netflix.zuul.message.ZuulMessage;
-import rx.Observable;
+import com.netflix.zuul.message.MessageComponent;
 
 /**
- * BAse interface for ZuulFilters
+ * Base interface for ZuulFilters
  *
  * @author Mikey Cohen
  *         Date: 10/27/11
  *         Time: 3:03 PM
  */
-public interface ZuulFilter<I extends ZuulMessage, O extends ZuulMessage> extends ShouldFilter<I>
+public interface ZuulFilter<I extends MessageComponent, O extends MessageComponent> extends ShouldFilter<I>
 {
     boolean isDisabled();
 
@@ -54,11 +53,7 @@ public interface ZuulFilter<I extends ZuulMessage, O extends ZuulMessage> extend
      * @return boolean
      */
     boolean overrideStopFilterProcessing();
-
-    /**
-     * if shouldFilter() is true, this method will be invoked. this method is the core method of a ZuulFilter
-     */
-    Observable<O> applyAsync(I input);
+    
 
     FilterSyncType getSyncType();
 
@@ -67,5 +62,5 @@ public interface ZuulFilter<I extends ZuulMessage, O extends ZuulMessage> extend
      *
      * @return ZuulMessage
      */
-    ZuulMessage getDefaultOutput(I input);
+    O getDefaultOutput(I input);
 }

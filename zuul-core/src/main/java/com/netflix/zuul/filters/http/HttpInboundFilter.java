@@ -15,7 +15,7 @@
  */
 package com.netflix.zuul.filters.http;
 
-import com.netflix.zuul.filters.BaseFilter;
+import com.netflix.zuul.filters.BaseAsyncFilter;
 import com.netflix.zuul.filters.FilterType;
 import com.netflix.zuul.message.http.HttpRequestMessage;
 
@@ -24,7 +24,7 @@ import com.netflix.zuul.message.http.HttpRequestMessage;
  * Date: 5/29/15
  * Time: 3:22 PM
  */
-public abstract class HttpInboundFilter extends BaseFilter<HttpRequestMessage, HttpRequestMessage>
+public abstract class HttpInboundFilter extends BaseAsyncFilter<HttpRequestMessage, HttpRequestMessage>
 {
     @Override
     public FilterType filterType() {

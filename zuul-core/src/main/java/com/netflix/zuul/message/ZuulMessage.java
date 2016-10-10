@@ -31,33 +31,33 @@ import java.nio.charset.Charset;
  * Date: 7/16/15
  * Time: 12:22 AM
  */
-public interface ZuulMessage extends Cloneable
+public interface ZuulMessage extends MessageComponent, Content, Cloneable
 {
     SessionContext getContext();
 
     Headers getHeaders();
 
     void setHeaders(Headers newHeaders);
-
+    
     byte[] getBody();
-
+    
     void setBody(byte[] body);
-
+    
     boolean hasBody();
-
+    
     void setBodyAsText(String bodyText, Charset cs);
-
+    
     void setBodyAsText(String bodyText);
-
-    Observable<byte[]> bufferBody();
-
+    
     int getMaxBodySize();
-
+    
     boolean isBodyBuffered();
-
-    Observable<ByteBuf> getBodyStream();
-
-    void setBodyStream(Observable<ByteBuf> bodyStream);
+    
+    /** Add another bytebuf to the content so far aggregated. */
+    void addContent(ByteBuf bb);
+    
+    /** Get a ByteBuf representing the so far aggregated body content. */
+    ByteBuf content();
 
     ZuulMessage clone();
 

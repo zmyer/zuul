@@ -18,14 +18,14 @@ package com.netflix.zuul.filters.http;
 import com.netflix.zuul.filters.FilterType;
 import com.netflix.zuul.message.ZuulMessage;
 import com.netflix.zuul.message.http.HttpResponseMessage;
-import com.netflix.zuul.filters.BaseFilter;
+import com.netflix.zuul.filters.BaseAsyncFilter;
 
 /**
  * User: michaels@netflix.com
  * Date: 5/29/15
  * Time: 3:23 PM
  */
-public abstract class HttpOutboundFilter extends BaseFilter<HttpResponseMessage, HttpResponseMessage>
+public abstract class HttpOutboundFilter extends BaseAsyncFilter<HttpResponseMessage, HttpResponseMessage>
 {
     @Override
     public FilterType filterType() {
@@ -33,7 +33,7 @@ public abstract class HttpOutboundFilter extends BaseFilter<HttpResponseMessage,
     }
 
     @Override
-    public ZuulMessage getDefaultOutput(HttpResponseMessage input)
+    public HttpResponseMessage getDefaultOutput(HttpResponseMessage input)
     {
         return input;
     }

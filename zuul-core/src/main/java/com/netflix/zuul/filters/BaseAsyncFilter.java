@@ -15,6 +15,7 @@
  */
 package com.netflix.zuul.filters;
 
+import com.netflix.zuul.message.MessageComponent;
 import com.netflix.zuul.message.ZuulMessage;
 import com.netflix.zuul.properties.CachedProperties;
 import org.junit.Before;
@@ -43,7 +44,7 @@ import static org.mockito.Mockito.when;
  *         Date: 10/26/11
  *         Time: 4:29 PM
  */
-public abstract class BaseFilter<I extends ZuulMessage, O extends ZuulMessage> implements ZuulFilter<I,O>
+public abstract class BaseAsyncFilter<I extends MessageComponent, O extends MessageComponent> implements AsyncZuulFilter<I,O>
 {
     private final CachedProperties.Boolean filterDisabled = new CachedProperties.Boolean(disablePropertyName(), false);
 
@@ -78,9 +79,9 @@ public abstract class BaseFilter<I extends ZuulMessage, O extends ZuulMessage> i
     }
 
     @Override
-    public ZuulMessage getDefaultOutput(I input)
+    public O getDefaultOutput(I input)
     {
-        return input;
+        return (O) input;
     }
 
     @Override
@@ -97,9 +98,9 @@ public abstract class BaseFilter<I extends ZuulMessage, O extends ZuulMessage> i
 
     public static class TestUnit {
         @Mock
-        private BaseFilter f1;
+        private BaseAsyncFilter f1;
         @Mock
-        private BaseFilter f2;
+        private BaseAsyncFilter f2;
         @Mock
         private ZuulMessage req;
 
@@ -111,7 +112,7 @@ public abstract class BaseFilter<I extends ZuulMessage, O extends ZuulMessage> i
 
         @Test
         public void testShouldFilter() {
-            class TestZuulFilter extends BaseSyncFilter
+            class TestZuulFilter extends BaseAsyncFilter
             {
                 @Override
                 public int filterOrder() {
@@ -124,13 +125,14 @@ public abstract class BaseFilter<I extends ZuulMessage, O extends ZuulMessage> i
                 }
 
                 @Override
-                public boolean shouldFilter(ZuulMessage req) {
+                public boolean shouldFilter(MessageComponent req) {
                     return false;
                 }
 
                 @Override
-                public ZuulMessage apply(ZuulMessage req) {
-                    return null;
+                public void applyAsync(MessageComponent input, FilterComplete callback)
+                {
+                    callback.invoke(input);
                 }
             }
 

@@ -16,8 +16,6 @@
 package com.netflix.zuul.origins;
 
 import com.netflix.zuul.message.http.HttpRequestMessage;
-import com.netflix.zuul.message.http.HttpResponseMessage;
-import rx.Observable;
 
 /**
  * User: michaels@netflix.com
@@ -27,5 +25,5 @@ import rx.Observable;
 public interface Origin {
     String getName();
     boolean isAvailable();
-    Observable<HttpResponseMessage> request(HttpRequestMessage requestMsg);
+    OriginRequest request(HttpRequestMessage requestMsg);
 }

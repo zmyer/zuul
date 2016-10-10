@@ -22,7 +22,6 @@ import com.netflix.zuul.message.Headers;
 import com.netflix.zuul.message.ZuulMessage;
 import com.netflix.zuul.message.ZuulMessageImpl;
 import com.netflix.zuul.properties.CachedProperties;
-import com.netflix.zuul.stats.Timing;
 import com.netflix.zuul.util.HttpUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.Cookie;
@@ -33,7 +32,6 @@ import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -42,9 +40,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -151,6 +147,18 @@ public class HttpRequestMessageImpl implements HttpRequestMessage
     }
 
     @Override
+    public void addContent(ByteBuf bb)
+    {
+        message.addContent(bb);
+    }
+
+    @Override
+    public ByteBuf content()
+    {
+        return message.content();
+    }
+
+    @Override
     public byte[] getBody()
     {
         return message.getBody();
@@ -187,31 +195,6 @@ public class HttpRequestMessageImpl implements HttpRequestMessage
     public boolean isBodyBuffered()
     {
         return message.isBodyBuffered();
-    }
-
-    @Override
-    public Observable<byte[]> bufferBody()
-    {
-        // Wrap the buffering of request body in a timer.
-        Timing timing = getContext().getTimings().getRequestBodyRead();
-        timing.start();
-        return message.bufferBody()
-                .finallyDo(() -> {
-                    timing.end();
-                });
-    }
-
-    @Override
-    public Observable<ByteBuf> getBodyStream()
-    {
-        return message.getBodyStream();
-    }
-
-    @Override
-    public void setBodyStream(Observable<ByteBuf> bodyStream)
-    {
-        immutableCheck();
-        message.setBodyStream(bodyStream);
     }
 
     @Override

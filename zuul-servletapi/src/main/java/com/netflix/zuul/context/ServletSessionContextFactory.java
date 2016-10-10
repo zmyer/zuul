@@ -17,10 +17,7 @@ package com.netflix.zuul.context;
 
 import com.netflix.zuul.bytebuf.ByteBufUtils;
 import com.netflix.zuul.exception.ZuulException;
-import com.netflix.zuul.message.Header;
-import com.netflix.zuul.message.HeaderName;
-import com.netflix.zuul.message.Headers;
-import com.netflix.zuul.message.ZuulMessage;
+import com.netflix.zuul.message.*;
 import com.netflix.zuul.message.http.*;
 import com.netflix.zuul.properties.CachedProperties;
 import io.netty.buffer.ByteBuf;
@@ -90,6 +87,18 @@ public class ServletSessionContextFactory implements SessionContextFactory<HttpS
             String errorMsg = "Error reading ServletInputStream.";
             LOG.error(errorMsg, e);
             throw new RuntimeException(errorMsg, e);
+        }
+
+        // Invoke the outbound filter chain for this response.
+        callback.invoke(respMsg);
+
+        // And now invoke the outbound filter chain for each chunk of bytes of the response body.
+        if (ribbonResp.hasEntity()) {
+            ByteBufUtils.bodyInputStreamToFilterCallbacks(respMsg, ribbonResp.getInputStream(), callback);
+        }
+        else {
+            // No response body, so push an empty last content component.
+            callback.invoke(MessageContentImpl.createEmptyLastContent(respMsg));
         }
 
         // Wrap the ServletInputStream(body) in an Observable.

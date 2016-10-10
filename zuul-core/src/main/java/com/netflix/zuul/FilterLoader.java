@@ -304,7 +304,7 @@ public class FilterLoader
         @Test
         public void testGetFilterFromFile() throws Exception {
             assertTrue(loader.putFilter(file));
-            verify(registry).put(any(String.class), any(BaseFilter.class));
+            verify(registry).put(any(String.class), any(BaseAsyncFilter.class));
         }
 
         @Test

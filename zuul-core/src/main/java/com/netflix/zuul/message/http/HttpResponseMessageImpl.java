@@ -17,12 +17,11 @@ package com.netflix.zuul.message.http;
 
 import com.netflix.config.DynamicIntProperty;
 import com.netflix.config.DynamicPropertyFactory;
+import com.netflix.zuul.context.SessionContext;
 import com.netflix.zuul.message.Header;
 import com.netflix.zuul.message.Headers;
-import com.netflix.zuul.context.SessionContext;
 import com.netflix.zuul.message.ZuulMessage;
 import com.netflix.zuul.message.ZuulMessageImpl;
-import com.netflix.zuul.stats.Timing;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
@@ -34,13 +33,10 @@ import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
 
 import java.nio.charset.Charset;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * User: michaels
@@ -99,6 +95,18 @@ public class HttpResponseMessageImpl implements HttpResponseMessage
     }
 
     @Override
+    public void addContent(ByteBuf bb)
+    {
+        message.addContent(bb);
+    }
+
+    @Override
+    public ByteBuf content()
+    {
+        return message.content();
+    }
+
+    @Override
     public byte[] getBody()
     {
         return message.getBody();
@@ -133,19 +141,7 @@ public class HttpResponseMessageImpl implements HttpResponseMessage
     {
         return message.isBodyBuffered();
     }
-
-    @Override
-    public Observable<ByteBuf> getBodyStream()
-    {
-        return message.getBodyStream();
-    }
-
-    @Override
-    public void setBodyStream(Observable<ByteBuf> bodyStream)
-    {
-        message.setBodyStream(bodyStream);
-    }
-
+    
     @Override
     public HttpRequestInfo getInboundRequest() {
         return outboundRequest.getInboundRequest();
@@ -168,18 +164,6 @@ public class HttpResponseMessageImpl implements HttpResponseMessage
     @Override
     public int getMaxBodySize() {
         return MAX_BODY_SIZE_PROP.get();
-    }
-
-    @Override
-    public Observable<byte[]> bufferBody()
-    {
-        // Wrap the buffering of response body in a timer.
-        Timing timing = getContext().getTimings().getResponseBodyRead();
-        timing.start();
-        return message.bufferBody()
-                .finallyDo(() -> {
-                    timing.end();
-                });
     }
 
     @Override

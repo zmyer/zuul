@@ -24,7 +24,6 @@ import io.netty.buffer.Unpooled;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
-import rx.Observable;
 
 import java.nio.charset.Charset;
 
@@ -35,7 +34,7 @@ import static org.junit.Assert.assertEquals;
  * Date: 2/20/15
  * Time: 3:10 PM
  */
-public class ZuulMessageImpl implements ZuulMessage
+public class ZuulMessageImpl implements ZuulMessage, Content
 {
     protected static final DynamicIntProperty MAX_BODY_SIZE_PROP = DynamicPropertyFactory.getInstance().getIntProperty(
             "zuul.message.body.max.size", 25 * 1000 * 1024);
@@ -43,10 +42,9 @@ public class ZuulMessageImpl implements ZuulMessage
 
     protected final SessionContext context;
     protected Headers headers;
-    protected Observable<ByteBuf> bodyStream = null;
+    protected ByteBuf content = null;
     protected boolean bodyBuffered = false;
-    protected byte[] body = null;
-
+    
     public ZuulMessageImpl(SessionContext context) {
         this(context, new Headers());
     }
@@ -72,26 +70,28 @@ public class ZuulMessageImpl implements ZuulMessage
     }
 
     @Override
-    public byte[] getBody()
+    public ByteBuf content()
     {
-        return this.body;
+        return this.content;
     }
 
     @Override
-    public void setBody(byte[] body)
+    public byte[] getBody()
     {
-        this.body = body;
+        return ByteBufUtils.toBytes(content);
+    }
 
-        // Now that body is buffered, if anyone asks for the stream, then give them this wrapper.
-        this.bodyStream = Observable.just(Unpooled.wrappedBuffer(this.body));
-
+    @Override
+    public void setBody(byte[] bytes)
+    {
+        this.content = Unpooled.wrappedBuffer(bytes);
         this.bodyBuffered = true;
     }
 
     @Override
     public boolean hasBody()
     {
-        return bodyStream != null;
+        return content != null;
     }
 
     @Override
@@ -107,27 +107,6 @@ public class ZuulMessageImpl implements ZuulMessage
     }
 
     @Override
-    public Observable<byte[]> bufferBody()
-    {
-        if (isBodyBuffered()) {
-            return Observable.just(getBody());
-        }
-        else if (null != bodyStream) {
-            return ByteBufUtils
-                    .aggregate(getBodyStream(), getMaxBodySize())
-                    .map(bb -> {
-                        // Set the body on Response object.
-                        byte[] body = ByteBufUtils.toBytes(bb);
-                        setBody(body);
-                        bb.release(); // Since this is terminally consuming the buffer.
-                        return body;
-                    });
-        } else {
-            return Observable.empty();
-        }
-    }
-
-    @Override
     public int getMaxBodySize() {
         return MAX_BODY_SIZE_PROP.get();
     }
@@ -138,24 +117,20 @@ public class ZuulMessageImpl implements ZuulMessage
     }
 
     @Override
-    public Observable<ByteBuf> getBodyStream() {
-        return bodyStream;
-    }
-
-    @Override
-    public void setBodyStream(Observable<ByteBuf> bodyStream) {
-        this.bodyStream = bodyStream;
+    public void addContent(ByteBuf bb)
+    {
+        if (this.content == null) {
+            this.content = bb;
+        }
+        else {
+            this.content = Unpooled.wrappedBuffer(this.content, bb);
+        }
     }
 
     @Override
     public ZuulMessage clone()
     {
         ZuulMessageImpl copy = new ZuulMessageImpl(context.clone(), headers.clone());
-
-        // Clone body bytes if available, but don't try to clone the bodyStream.
-        if (body != null) {
-            copy.setBody(body.clone());
-        }
         return copy;
     }
 

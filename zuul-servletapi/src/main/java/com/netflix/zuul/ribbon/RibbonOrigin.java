@@ -26,32 +26,35 @@ import com.netflix.loadbalancer.Server;
 import com.netflix.niws.client.http.RestClient;
 import com.netflix.zuul.bytebuf.ByteBufUtils;
 import com.netflix.zuul.constants.ZuulConstants;
-import com.netflix.zuul.context.*;
+import com.netflix.zuul.context.SessionContext;
 import com.netflix.zuul.exception.ZuulException;
-import com.netflix.zuul.message.Header;
-import com.netflix.zuul.message.HeaderName;
-import com.netflix.zuul.message.Headers;
+import com.netflix.zuul.filters.FilterComplete;
+import com.netflix.zuul.message.*;
 import com.netflix.zuul.message.http.*;
 import com.netflix.zuul.origins.Origin;
+import com.netflix.zuul.origins.OriginRequest;
 import com.netflix.zuul.stats.Timing;
 import com.netflix.zuul.util.ProxyUtils;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
+import io.netty.util.concurrent.DefaultPromise;
+import io.netty.util.concurrent.Promise;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+
+import static org.junit.Assert.assertTrue;
 
 /**
  * User: Mike Smith
@@ -91,89 +94,16 @@ public class RibbonOrigin implements Origin
 
 
     @Override
-    public Observable<HttpResponseMessage> request(HttpRequestMessage requestMsg)
+    public OriginRequest request(HttpRequestMessage requestMsg)
     {
         SessionContext context = requestMsg.getContext();
-        if (client == null) {
-            throw proxyError(requestMsg, new IllegalArgumentException("No RestClient found for name! name=" + String.valueOf(name)), null);
-        }
 
-        // Convert to a ribbon request.
-        HttpRequest.Verb verb = HttpRequest.Verb.valueOf(requestMsg.getMethod().toUpperCase());
-        URI uri = URI.create(requestMsg.getPath());
-        Headers headers = requestMsg.getHeaders();
-        HttpQueryParams params = requestMsg.getQueryParams();
-
-        HttpRequest.Builder builder = HttpRequest.newBuilder().
-                verb(verb).
-                uri(uri);
-
-        // Add X-Forwarded headers if not already there.
-        ProxyUtils.addXForwardedHeaders(requestMsg);
-
-        // Request headers.
-        for (Header entry : headers.entries()) {
-            if (ProxyUtils.isValidRequestHeader(entry.getName())) {
-                builder.header(entry.getKey(), entry.getValue());
-            }
-        }
-
-        // Request query params.
-        for (Map.Entry<String, String> entry : params.entries()) {
-            builder.queryParams(entry.getKey(), entry.getValue());
-        }
-
-        // Request body.
-        Observable<HttpRequest> requestBuiltObs;
-        if (requestMsg.getBodyStream() != null) {
-            // TODO - find a way to avoid having to buffer the whole request body here. Need a way to convert Observable<ByteBuf> into a single
-            // InputStream without first reading each of the ByteBufs (equivalent to what we do in the opposite direction using StringObservable.from().
-            requestBuiltObs = ByteBufUtils.aggregate(requestMsg.getBodyStream(), MAX_BODY_SIZE_PROP.get())
-                    .map(bb -> new ByteBufInputStream(bb))
-                    .single()
-                    .map(input -> {
-                        builder.entity(input);
-                        return builder.build();
-                    });
-        }
-        else {
-            requestBuiltObs = Observable.just(builder.build());
-        }
-
-        // Wrap the buffering of request body in a timer.
-        // NOTE - this is also done in HttpRequestMessage.bufferBody() if that is called.
-        // TODO - how to start the timer as a callback on the Observable, instead of here?
         Timing readTiming = context.getTimings().getRequestBodyRead();
         readTiming.start();
-        requestBuiltObs.finallyDo(() -> readTiming.end() );
-
-
-        // Execute the request.
-        final Timing timing = context.getTimings().getRequestProxy();
-        timing.start();
-        Observable<HttpResponseMessage> responseObs = requestBuiltObs.map(httpClientRequest -> {
-            HttpResponse ribbonResp;
-            try {
-                ribbonResp = client.executeWithLoadBalancer(httpClientRequest);
-
-                // Store the ribbon response on context, so that code in a Observable.finallyDo() can get access
-                // to it to release the resources.
-                requestMsg.getContext().set("_ribbonResp", ribbonResp);
-            }
-            catch (ClientException e) {
-                throw proxyError(requestMsg, e, e.getErrorType().toString());
-            }
-            catch(Exception e) {
-                throw proxyError(requestMsg, e, null);
-            }
-            finally {
-                timing.end();
-            }
-            HttpResponseMessage respMsg = createHttpResponseMessage(ribbonResp, requestMsg);
-            return respMsg;
-        });
-
-        return responseObs;
+        
+        RibbonOriginRequest originRequest = new RibbonOriginRequest(requestMsg, new RibbonPromise());
+        
+        return originRequest;
     }
 
     protected ZuulException proxyError(HttpRequestMessage zuulReq, Throwable t, String errorCauseMsg)
@@ -195,7 +125,9 @@ public class RibbonOrigin implements Origin
         return new ZuulException("Proxying error", t, errorCauseMsg);
     }
 
-    protected HttpResponseMessage createHttpResponseMessage(HttpResponse ribbonResp, HttpRequestMessage request)
+    protected HttpResponseMessage createHttpResponseMessage(HttpResponse ribbonResp, 
+                                                            HttpRequestMessage request,
+                                                            FilterComplete callback)
     {
         // Convert to a zuul response object.
         HttpResponseMessage respMsg = new HttpResponseMessageImpl(request.getContext(), request, 500);
@@ -209,14 +141,127 @@ public class RibbonOrigin implements Origin
 
         // Store this original response info for future reference (ie. for metrics and access logging purposes).
         respMsg.storeInboundResponse();
+        
+        // Invoke the outbound filter chain for this response.
+        callback.invoke(respMsg);
 
-        // Body.
+        // And now invoke the outbound filter chain for each chunk of bytes of the response body.
         if (ribbonResp.hasEntity()) {
-            Observable<ByteBuf> responseBodyObs = ByteBufUtils.fromInputStream(ribbonResp.getInputStream());
-            respMsg.setBodyStream(responseBodyObs);
+            ByteBufUtils.bodyInputStreamToFilterCallbacks(respMsg, ribbonResp.getInputStream(), callback);
+        }
+        else {
+            // No response body, so push an empty last content component.
+            callback.invoke(MessageContentImpl.createEmptyLastContent(respMsg));
         }
 
         return respMsg;
+    }
+    
+    private class RibbonOriginRequest implements OriginRequest
+    {
+        private final HttpRequestMessage request;
+        private final Promise<HttpResponseMessage> promise;
+
+        public RibbonOriginRequest(HttpRequestMessage request, Promise<HttpResponseMessage> promise)
+        {
+            this.request = request;
+            this.promise = promise;
+        }
+
+        @Override
+        public Promise<HttpResponseMessage> promise()
+        {
+            return promise;
+        }
+
+        @Override
+        public void writeContent(MessageContent messageContent, FilterComplete callback)
+        {
+            // Buffer the content until we've received the last one.
+            request.addContent(messageContent.content());
+            
+            if (messageContent.isLast()) {
+                onLastContent(callback);
+            }
+        }
+        
+        private void onLastContent(FilterComplete callback)
+        {
+            SessionContext context = request.getContext();
+            if (client == null) {
+                throw proxyError(request, new IllegalArgumentException("No RestClient found for name! name=" + String.valueOf(name)), null);
+            }
+
+            // Convert to a ribbon request.
+            HttpRequest.Verb verb = HttpRequest.Verb.valueOf(request.getMethod().toUpperCase());
+            URI uri = URI.create(request.getPath());
+            Headers headers = request.getHeaders();
+            HttpQueryParams params = request.getQueryParams();
+
+            HttpRequest.Builder builder = HttpRequest.newBuilder().
+                    verb(verb).
+                    uri(uri);
+
+            // Add X-Forwarded headers if not already there.
+            ProxyUtils.addXForwardedHeaders(request);
+
+            // Request headers.
+            for (Header entry : headers.entries()) {
+                if (ProxyUtils.isValidRequestHeader(entry.getName())) {
+                    builder.header(entry.getKey(), entry.getValue());
+                }
+            }
+
+            // Request query params.
+            for (Map.Entry<String, String> entry : params.entries()) {
+                builder.queryParams(entry.getKey(), entry.getValue());
+            }
+
+            // Request body.
+            HttpRequest httpClientRequest;
+            ByteBuf body = request.content();
+            if (body != null) {
+                builder.entity(body);
+            }
+            httpClientRequest = builder.build();
+            context.getTimings().getRequestBodyRead().end();
+            
+            // Execute the request.
+            final Timing timing = context.getTimings().getRequestProxy();
+            timing.start();
+            HttpResponse ribbonResp;
+            try {
+                ribbonResp = client.executeWithLoadBalancer(httpClientRequest);
+
+                // Store the ribbon response on context, so that code can later get access
+                // to it to release the resources.
+                context.set("_ribbonResp", ribbonResp);
+
+                HttpResponseMessage respMsg = createHttpResponseMessage(ribbonResp, request, callback);
+                promise.setSuccess(respMsg);
+            }
+            catch (ClientException e) {
+                promise.setFailure(proxyError(request, e, e.getErrorType().toString()));
+            }
+            catch(Exception e) {
+                promise.setFailure(proxyError(request, e, null));
+            }
+            finally {
+                timing.end();
+            }
+        }
+    }
+
+    static class RibbonPromise extends DefaultPromise<com.netflix.zuul.message.http.HttpResponseMessage>
+    {
+        RibbonPromise() {
+            super();
+        }
+
+        @Override
+        protected void checkDeadLock() {
+            // No check
+        }
     }
 
 
@@ -225,12 +270,13 @@ public class RibbonOrigin implements Origin
     {
         @Mock
         HttpResponse proxyResp;
-
         @Mock
         HttpRequestMessage request;
-
+        @Mock
+        FilterComplete callback;
+        
         @Test
-        public void testSetResponse() throws Exception
+        public void testCreateHttpResponseMessage() throws Exception
         {
             RibbonOrigin origin = new RibbonOrigin("blah");
             origin = Mockito.spy(origin);
@@ -247,15 +293,22 @@ public class RibbonOrigin implements Origin
             Mockito.when(proxyResp.hasEntity()).thenReturn(true);
             Mockito.when(proxyResp.getHttpHeaders()).thenReturn(headers);
 
-            HttpResponseMessage response = origin.createHttpResponseMessage(proxyResp, request);
+            HttpResponseMessage response = origin.createHttpResponseMessage(proxyResp, request, callback);
 
             Assert.assertEquals(200, response.getStatus());
+            assertTrue(response.getHeaders().contains("test", "test"));
 
-            byte[] respBodyBytes = ByteBufUtils.toBytes(response.getBodyStream().toBlocking().single());
+            ArgumentCaptor<MessageComponent> argument = ArgumentCaptor.forClass(MessageComponent.class);
+            Mockito.verify(callback).invoke(argument.capture());
+            
+            assertTrue(argument.getValue() instanceof MessageContent);
+            MessageContent messageContent = (MessageContent) argument.getValue();
+            
+            byte[] respBodyBytes = ByteBufUtils.toBytes(messageContent.content());
             Assert.assertNotNull(respBodyBytes);
             Assert.assertEquals(body.length, respBodyBytes.length);
 
-            Assert.assertTrue(response.getHeaders().contains("test", "test"));
+            
         }
     }
 }

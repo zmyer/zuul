@@ -20,14 +20,14 @@
 
 package com.netflix.zuul.filters;
 
-import com.netflix.zuul.message.ZuulMessage;
+import com.netflix.zuul.message.MessageComponent;
 
 /**
  * User: Mike Smith
  * Date: 5/16/15
  * Time: 1:57 PM
  */
-public abstract class Endpoint<I extends ZuulMessage, O extends ZuulMessage> extends BaseFilter<I, O>
+public abstract class Endpoint<I extends MessageComponent, O extends MessageComponent> extends BaseAsyncFilter<I, O>
 {
     @Override
     public int filterOrder()
