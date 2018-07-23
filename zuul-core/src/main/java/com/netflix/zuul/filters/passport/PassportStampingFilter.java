@@ -16,14 +16,15 @@
 
 package com.netflix.zuul.filters.passport;
 
-import com.netflix.zuul.message.ZuulMessage;
 import com.netflix.zuul.filters.SyncZuulFilterAdapter;
+import com.netflix.zuul.message.ZuulMessage;
 import com.netflix.zuul.passport.CurrentPassport;
 import com.netflix.zuul.passport.PassportState;
 
 /**
  * Created by saroskar on 2/18/17.
  */
+// TODO: 2018/7/9 by zmyer
 public abstract class PassportStampingFilter<T extends ZuulMessage> extends SyncZuulFilterAdapter<T, T> {
 
     private final PassportState stamp;
@@ -31,7 +32,7 @@ public abstract class PassportStampingFilter<T extends ZuulMessage> extends Sync
 
     public PassportStampingFilter(PassportState stamp) {
         this.stamp = stamp;
-        this.name = filterType().name()+"-"+stamp.name()+"-Filter";
+        this.name = filterType().name() + "-" + stamp.name() + "-Filter";
     }
 
     @Override

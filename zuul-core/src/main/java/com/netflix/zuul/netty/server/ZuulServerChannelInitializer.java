@@ -16,29 +16,30 @@
 
 package com.netflix.zuul.netty.server;
 
+import com.netflix.netty.common.channel.config.ChannelConfig;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.group.ChannelGroup;
-import com.netflix.netty.common.channel.config.ChannelConfig;
 
 /**
  * User: Mike Smith
  * Date: 3/5/16
  * Time: 6:44 PM
  */
+// TODO: 2018/7/2 by zmyer
 public class ZuulServerChannelInitializer extends BaseZuulChannelInitializer {
 
+    // TODO: 2018/7/4 by zmyer
     public ZuulServerChannelInitializer(int port,
-                                        ChannelConfig channelConfig,
-                                        ChannelConfig channelDependencies,
-                                        ChannelGroup channels)
-    {
+            ChannelConfig channelConfig,
+            ChannelConfig channelDependencies,
+            ChannelGroup channels) {
         super(port, channelConfig, channelDependencies, channels);
     }
 
+    // TODO: 2018/7/4 by zmyer
     @Override
-    protected void initChannel(Channel ch) throws Exception
-    {
+    protected void initChannel(Channel ch) throws Exception {
         // Configure our pipeline of ChannelHandlerS.
         ChannelPipeline pipeline = ch.pipeline();
 

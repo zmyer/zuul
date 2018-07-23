@@ -31,19 +31,19 @@ import java.util.List;
  * Date: 8/16/16
  * Time: 2:40 PM
  */
-public class ServerSslConfig
-{
+// TODO: 2018/7/9 by zmyer
+public class ServerSslConfig {
     private static final DynamicLongProperty DEFAULT_SESSION_TIMEOUT =
             new DynamicLongProperty("server.ssl.session.timeout", (18 * 60));  // 18 hours
 
     private static final String[] DEFAULT_CIPHERS;
+
     static {
         try {
             SSLContext context = SSLContext.getDefault();
             SSLSocketFactory sf = context.getSocketFactory();
             DEFAULT_CIPHERS = sf.getSupportedCipherSuites();
-        }
-        catch (NoSuchAlgorithmException e) {
+        } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
     }
@@ -52,33 +52,31 @@ public class ServerSslConfig
     private final List<String> ciphers;
     private final File certChainFile;
     private final File keyFile;
-    
+
     private final ClientAuth clientAuth;
     private final File clientAuthTrustStoreFile;
     private final String clientAuthTrustStorePassword;
     private final File clientAuthTrustStorePasswordFile;
-    
+
     private final boolean decryptKeyUsingMetatron;
     private final byte[] metatronPolicy;
 
     private final long sessionTimeout;
     private final boolean sessionTicketsEnabled;
 
-    public ServerSslConfig(String[] protocols, String[] ciphers, File certChainFile, File keyFile)
-    {
+    public ServerSslConfig(String[] protocols, String[] ciphers, File certChainFile, File keyFile) {
         this(protocols, ciphers, certChainFile, keyFile, null, ClientAuth.NONE, null, (File) null, false);
     }
 
-    public ServerSslConfig(String[] protocols, String[] ciphers, File certChainFile, File keyFile, byte[] metatronPolicy, ClientAuth clientAuth)
-    {
+    public ServerSslConfig(String[] protocols, String[] ciphers, File certChainFile, File keyFile,
+            byte[] metatronPolicy, ClientAuth clientAuth) {
         this(protocols, ciphers, certChainFile, keyFile, metatronPolicy, clientAuth, null, (File) null, true);
     }
 
     public ServerSslConfig(String[] protocols, String[] ciphers, File certChainFile, File keyFile,
-                           byte[] metatronPolicy,
-                           ClientAuth clientAuth, File clientAuthTrustStoreFile, File clientAuthTrustStorePasswordFile, 
-                           boolean sessionTicketsEnabled)
-    {
+            byte[] metatronPolicy,
+            ClientAuth clientAuth, File clientAuthTrustStoreFile, File clientAuthTrustStorePasswordFile,
+            boolean sessionTicketsEnabled) {
         this.protocols = protocols;
         this.ciphers = ciphers != null ? Arrays.asList(ciphers) : null;
         this.certChainFile = certChainFile;
@@ -92,12 +90,11 @@ public class ServerSslConfig
         this.sessionTimeout = DEFAULT_SESSION_TIMEOUT.get();
         this.sessionTicketsEnabled = sessionTicketsEnabled;
     }
-    
-    public ServerSslConfig(String[] protocols, String[] ciphers, File certChainFile, File keyFile, 
-                           byte[] metatronPolicy, 
-                           ClientAuth clientAuth, File clientAuthTrustStoreFile, String clientAuthTrustStorePassword, 
-        boolean sessionTicketsEnabled)
-    {
+
+    public ServerSslConfig(String[] protocols, String[] ciphers, File certChainFile, File keyFile,
+            byte[] metatronPolicy,
+            ClientAuth clientAuth, File clientAuthTrustStoreFile, String clientAuthTrustStorePassword,
+            boolean sessionTicketsEnabled) {
         this.protocols = protocols;
         this.ciphers = Arrays.asList(ciphers);
         this.certChainFile = certChainFile;
@@ -111,80 +108,65 @@ public class ServerSslConfig
         this.sessionTimeout = DEFAULT_SESSION_TIMEOUT.get();
         this.sessionTicketsEnabled = sessionTicketsEnabled;
     }
-    
-    public static String[] getDefaultCiphers()
-    {
+
+    public static String[] getDefaultCiphers() {
         return DEFAULT_CIPHERS;
     }
 
-    public static ServerSslConfig withDefaultCiphers(File certChainFile, File keyFile, String ... protocols)
-    {
+    public static ServerSslConfig withDefaultCiphers(File certChainFile, File keyFile, String... protocols) {
         return new ServerSslConfig(protocols, getDefaultCiphers(), certChainFile, keyFile);
     }
 
-    public String[] getProtocols()
-    {
+    public String[] getProtocols() {
         return protocols;
     }
 
-    public List<String> getCiphers()
-    {
+    public List<String> getCiphers() {
         return ciphers;
     }
 
-    public File getCertChainFile()
-    {
+    public File getCertChainFile() {
         return certChainFile;
     }
 
-    public File getKeyFile()
-    {
+    public File getKeyFile() {
         return keyFile;
     }
 
-    public boolean shouldDecryptKeyUsingMetatron()
-    {
+    public boolean shouldDecryptKeyUsingMetatron() {
         return decryptKeyUsingMetatron;
     }
 
-    public byte[] getMetatronPolicyFile()
-    {
+    public byte[] getMetatronPolicyFile() {
         return metatronPolicy;
     }
 
-    public ClientAuth getClientAuth()
-    {
+    public ClientAuth getClientAuth() {
         return clientAuth;
     }
 
-    public File getClientAuthTrustStoreFile()
-    {
+    public File getClientAuthTrustStoreFile() {
         return clientAuthTrustStoreFile;
     }
 
-    public String getClientAuthTrustStorePassword()
-    {
+    public String getClientAuthTrustStorePassword() {
         return clientAuthTrustStorePassword;
     }
 
-    public File getClientAuthTrustStorePasswordFile()
-    {
+    public File getClientAuthTrustStorePasswordFile() {
         return clientAuthTrustStorePasswordFile;
     }
 
-    public long getSessionTimeout()
-    {
+    public long getSessionTimeout() {
         return sessionTimeout;
     }
 
-    public boolean sessionTicketsEnabled()
-    {
+    public boolean sessionTicketsEnabled() {
         return sessionTicketsEnabled;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "ServerSslConfig{" +
                 "protocols=" + Arrays.toString(protocols) +
                 ", ciphers=" + ciphers +

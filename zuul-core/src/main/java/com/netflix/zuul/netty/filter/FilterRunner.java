@@ -22,8 +22,10 @@ import io.netty.handler.codec.http.HttpContent;
 /**
  * Created by saroskar on 5/18/17.
  */
+// TODO: 2018/7/10 by zmyer
 public interface FilterRunner<I extends ZuulMessage, O extends ZuulMessage> {
 
     void filter(I zuulMesg);
+
     void filter(I zuulMesg, HttpContent chunk);
 }

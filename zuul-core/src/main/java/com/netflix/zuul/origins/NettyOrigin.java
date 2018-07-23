@@ -38,11 +38,12 @@ import java.util.concurrent.atomic.AtomicReference;
  * Author: Arthur Gonigberg
  * Date: November 29, 2017
  */
+// TODO: 2018/7/10 by zmyer
 public interface NettyOrigin extends InstrumentedOrigin {
 
     Promise<PooledConnection> connectToOrigin(final HttpRequestMessage zuulReq, EventLoop eventLoop,
-                                              int attemptNumber, CurrentPassport passport,
-                                              AtomicReference<Server> chosenServer);
+            int attemptNumber, CurrentPassport passport,
+            AtomicReference<Server> chosenServer);
 
     Timing getProxyTiming(HttpRequestMessage zuulReq);
 
@@ -53,13 +54,13 @@ public interface NettyOrigin extends InstrumentedOrigin {
     void onRequestStartWithServer(final HttpRequestMessage zuulReq, final Server originServer, int attemptNum);
 
     void onRequestExceptionWithServer(final HttpRequestMessage zuulReq, final Server originServer,
-                                      final int attemptNum, Throwable t);
+            final int attemptNum, Throwable t);
 
     void onRequestExecutionSuccess(final HttpRequestMessage zuulReq, final HttpResponseMessage zuulResp,
-                                   final Server originServer, final int attemptNum);
+            final Server originServer, final int attemptNum);
 
     void onRequestExecutionFailed(final HttpRequestMessage zuulReq, final Server originServer,
-                                  final int attemptNum, Throwable t);
+            final int attemptNum, Throwable t);
 
     void recordFinalError(final HttpRequestMessage requestMsg, final Throwable throwable);
 

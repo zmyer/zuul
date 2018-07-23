@@ -24,14 +24,14 @@ import com.netflix.zuul.FilterUsageNotifier;
 import com.netflix.zuul.context.SessionContext;
 import com.netflix.zuul.filters.Endpoint;
 import com.netflix.zuul.filters.FilterType;
+import com.netflix.zuul.filters.SyncZuulFilterAdapter;
 import com.netflix.zuul.filters.ZuulFilter;
+import com.netflix.zuul.filters.endpoint.MissingEndpointHandlingFilter;
 import com.netflix.zuul.filters.endpoint.ProxyEndpoint;
 import com.netflix.zuul.message.ZuulMessage;
 import com.netflix.zuul.message.http.HttpRequestMessage;
 import com.netflix.zuul.message.http.HttpResponseMessage;
 import com.netflix.zuul.message.http.HttpResponseMessageImpl;
-import com.netflix.zuul.filters.endpoint.MissingEndpointHandlingFilter;
-import com.netflix.zuul.filters.SyncZuulFilterAdapter;
 import com.netflix.zuul.netty.server.MethodBinding;
 import io.netty.handler.codec.http.HttpContent;
 import org.slf4j.Logger;
@@ -46,6 +46,7 @@ import static com.netflix.zuul.context.CommonContextKeys.ZUUL_ENDPOINT;
  * This class is supposed to be thread safe and hence should not have any non final member variables
  * Created by saroskar on 5/18/17.
  */
+// TODO: 2018/7/10 by zmyer
 @ThreadSafe
 public class ZuulEndPointRunner extends BaseZuulFilterRunner<HttpRequestMessage, HttpResponseMessage> {
 
@@ -53,11 +54,12 @@ public class ZuulEndPointRunner extends BaseZuulFilterRunner<HttpRequestMessage,
 
     private static Logger logger = LoggerFactory.getLogger(ZuulEndPointRunner.class);
     public static final String PROXY_ENDPOINT_FILTER_NAME = ProxyEndpoint.class.getCanonicalName();
-    public static final DynamicStringProperty DEFAULT_ERROR_ENDPOINT = new DynamicStringProperty("zuul.filters.error.default", "endpoint.ErrorResponse");
+    public static final DynamicStringProperty DEFAULT_ERROR_ENDPOINT = new DynamicStringProperty(
+            "zuul.filters.error.default", "endpoint.ErrorResponse");
 
 
     public ZuulEndPointRunner(FilterUsageNotifier usageNotifier, FilterLoader filterLoader,
-                              FilterRunner<HttpResponseMessage, HttpResponseMessage> respFilters) {
+            FilterRunner<HttpResponseMessage, HttpResponseMessage> respFilters) {
         super(FilterType.ENDPOINT, usageNotifier, respFilters);
         this.filterLoader = filterLoader;
     }
@@ -69,10 +71,12 @@ public class ZuulEndPointRunner extends BaseZuulFilterRunner<HttpRequestMessage,
         return null;
     }
 
-    public static void setEndpoint(HttpRequestMessage zuulReq, ZuulFilter<HttpRequestMessage, HttpResponseMessage> endpoint) {
+    public static void setEndpoint(HttpRequestMessage zuulReq,
+            ZuulFilter<HttpRequestMessage, HttpResponseMessage> endpoint) {
         zuulReq.getContext().set(ZUUL_ENDPOINT, endpoint);
     }
 
+    // TODO: 2018/7/10 by zmyer
     @Override
     public void filter(final HttpRequestMessage zuulReq) {
         if (zuulReq.getContext().isCancelled()) {
@@ -90,13 +94,12 @@ public class ZuulEndPointRunner extends BaseZuulFilterRunner<HttpRequestMessage,
             setEndpoint(zuulReq, endpoint);
             final HttpResponseMessage zuulResp = filter(endpoint, zuulReq);
 
-            if ((zuulResp != null)&&(! (endpoint instanceof ProxyEndpoint))) {
+            if ((zuulResp != null) && (!(endpoint instanceof ProxyEndpoint))) {
                 //EdgeProxyEndpoint calls invokeNextStage internally
                 logger.debug("Endpoint calling invokeNextStage, UUID {}", zuulReq.getContext().getUUID());
                 invokeNextStage(zuulResp);
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             handleException(zuulReq, endpointName, ex);
         }
     }
@@ -132,13 +135,13 @@ public class ZuulEndPointRunner extends BaseZuulFilterRunner<HttpRequestMessage,
                     chunk.release();
                 }
 
-                if (isFilterAwaitingBody(zuulReq) && zuulReq.hasCompleteBody() && !(endpoint instanceof ProxyEndpoint)) {
+                if (isFilterAwaitingBody(zuulReq) && zuulReq.hasCompleteBody() &&
+                        !(endpoint instanceof ProxyEndpoint)) {
                     //whole body has arrived, resume filter chain
                     invokeNextStage(filter(endpoint, zuulReq));
                 }
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             handleException(zuulReq, endpointName, ex);
         }
     }
@@ -154,8 +157,9 @@ public class ZuulEndPointRunner extends BaseZuulFilterRunner<HttpRequestMessage,
         }
     }
 
+    // TODO: 2018/7/10 by zmyer
     protected ZuulFilter<HttpRequestMessage, HttpResponseMessage> getEndpoint(final String endpointName,
-                final HttpRequestMessage zuulRequest) {
+            final HttpRequestMessage zuulRequest) {
         final SessionContext zuulCtx = zuulRequest.getContext();
 
         if (zuulCtx.getStaticResponse() != null) {
@@ -185,30 +189,31 @@ public class ZuulEndPointRunner extends BaseZuulFilterRunner<HttpRequestMessage,
      * @return the proxy endpoint
      */
     protected ZuulFilter<HttpRequestMessage, HttpResponseMessage> newProxyEndpoint(HttpRequestMessage zuulRequest) {
-        return new ProxyEndpoint(zuulRequest, getChannelHandlerContext(zuulRequest), getNextStage(), MethodBinding.NO_OP_BINDING);
+        return new ProxyEndpoint(zuulRequest, getChannelHandlerContext(zuulRequest), getNextStage(),
+                MethodBinding.NO_OP_BINDING);
     }
 
     protected <I extends ZuulMessage, O extends ZuulMessage> Endpoint<I, O> getEndpointFilter(String endpointName) {
         return (Endpoint<I, O>) filterLoader.getFilterByNameAndType(endpointName, FilterType.ENDPOINT);
     }
 
-    final protected static ZuulFilter<HttpRequestMessage, HttpResponseMessage> STATIC_RESPONSE_ENDPOINT = new SyncZuulFilterAdapter<HttpRequestMessage, HttpResponseMessage>() {
-        @Override
-        public HttpResponseMessage apply(HttpRequestMessage request) {
-            final HttpResponseMessage resp = request.getContext().getStaticResponse();
-            resp.finishBufferedBodyIfIncomplete();
-            return resp;
-        }
+    final protected static ZuulFilter<HttpRequestMessage, HttpResponseMessage> STATIC_RESPONSE_ENDPOINT =
+            new SyncZuulFilterAdapter<HttpRequestMessage, HttpResponseMessage>() {
+                @Override
+                public HttpResponseMessage apply(HttpRequestMessage request) {
+                    final HttpResponseMessage resp = request.getContext().getStaticResponse();
+                    resp.finishBufferedBodyIfIncomplete();
+                    return resp;
+                }
 
-        @Override
-        public String filterName() {
-            return "StaticResponseEndpoint";
-        }
+                @Override
+                public String filterName() {
+                    return "StaticResponseEndpoint";
+                }
 
-        @Override
-        public HttpResponseMessage getDefaultOutput(HttpRequestMessage input) {
-            return HttpResponseMessageImpl.defaultErrorResponse(input);
-        }
-    };
-
+                @Override
+                public HttpResponseMessage getDefaultOutput(HttpRequestMessage input) {
+                    return HttpResponseMessageImpl.defaultErrorResponse(input);
+                }
+            };
 }

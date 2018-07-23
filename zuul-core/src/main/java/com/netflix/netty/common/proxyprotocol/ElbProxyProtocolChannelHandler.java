@@ -16,8 +16,6 @@
 
 package com.netflix.netty.common.proxyprotocol;
 
-import com.netflix.config.CachedDynamicBooleanProperty;
-import com.netflix.config.DynamicIntProperty;
 import com.netflix.netty.common.SourceAddressChannelHandler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -27,10 +25,10 @@ import io.netty.handler.codec.haproxy.HAProxyMessage;
 import io.netty.handler.codec.haproxy.HAProxyProtocolVersion;
 import io.netty.handler.codec.haproxy.HAProxyTLV;
 import io.netty.util.AttributeKey;
-
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * Copies any decoded HAProxyMessage into the channel attributes, and doesn't pass
@@ -42,18 +40,20 @@ import org.slf4j.LoggerFactory;
  * Date: 3/24/16
  * Time: 11:59 AM
  */
-public class ElbProxyProtocolChannelHandler extends ChannelInboundHandlerAdapter
-{
+// TODO: 2018/7/3 by zmyer
+public class ElbProxyProtocolChannelHandler extends ChannelInboundHandlerAdapter {
     public static final String NAME = "ElbProxyProtocolChannelHandler";
-    public static final AttributeKey<HAProxyMessage> ATTR_HAPROXY_MESSAGE = AttributeKey.newInstance("_haproxy_message");
-    public static final AttributeKey<HAProxyProtocolVersion> ATTR_HAPROXY_VERSION = AttributeKey.newInstance("_haproxy_version");
+    public static final AttributeKey<HAProxyMessage> ATTR_HAPROXY_MESSAGE = AttributeKey.newInstance(
+            "_haproxy_message");
+    public static final AttributeKey<HAProxyProtocolVersion> ATTR_HAPROXY_VERSION = AttributeKey.newInstance(
+            "_haproxy_version");
 
     private static final Logger logger = LoggerFactory.getLogger("ElbProxyProtocolChannelHandler");
 
     private final boolean withProxyProtocol;
 
-    public ElbProxyProtocolChannelHandler(boolean withProxyProtocol)
-    {
+    // TODO: 2018/7/4 by zmyer
+    public ElbProxyProtocolChannelHandler(boolean withProxyProtocol) {
         this.withProxyProtocol = withProxyProtocol;
     }
 
@@ -62,8 +62,8 @@ public class ElbProxyProtocolChannelHandler extends ChannelInboundHandlerAdapter
      *
      * @param pipeline
      */
-    public void addProxyProtocol(ChannelPipeline pipeline)
-    {
+    // TODO: 2018/7/9 by zmyer
+    public void addProxyProtocol(ChannelPipeline pipeline) {
         pipeline.addLast(NAME, this);
 
         if (withProxyProtocol) {
@@ -72,8 +72,7 @@ public class ElbProxyProtocolChannelHandler extends ChannelInboundHandlerAdapter
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
-    {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (withProxyProtocol) {
             if (msg instanceof HAProxyMessage && msg != null) {
                 HAProxyMessage hapm = (HAProxyMessage) msg;

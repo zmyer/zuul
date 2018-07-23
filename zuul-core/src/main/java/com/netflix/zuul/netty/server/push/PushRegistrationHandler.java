@@ -33,6 +33,7 @@ import static com.netflix.zuul.netty.server.push.PushConnectionRegistry.PushConn
  * Author: Susheel Aroskar
  * Date: 5/14/18
  */
+// TODO: 2018/7/9 by zmyer
 public abstract class PushRegistrationHandler extends ChannelInboundHandlerAdapter {
 
     protected final PushConnectionRegistry pushConnectionRegistry;
@@ -47,10 +48,14 @@ public abstract class PushRegistrationHandler extends ChannelInboundHandlerAdapt
     private volatile PushConnection pushConnection;
 
 
-    public static final CachedDynamicIntProperty PUSH_REGISTRY_TTL = new CachedDynamicIntProperty("zuul.push.registry.ttl.seconds", 30 * 60);
-    public static final CachedDynamicIntProperty RECONNECT_DITHER = new CachedDynamicIntProperty("zuul.push.reconnect.dither.seconds", 3 * 60);
-    public static final CachedDynamicIntProperty UNAUTHENTICATED_CONN_TTL = new CachedDynamicIntProperty("zuul.push.noauth.ttl.seconds", 8);
-    public static final CachedDynamicIntProperty CLIENT_CLOSE_GRACE_PERIOD = new CachedDynamicIntProperty("zuul.push.client.close.grace.period", 4);
+    public static final CachedDynamicIntProperty PUSH_REGISTRY_TTL = new CachedDynamicIntProperty(
+            "zuul.push.registry.ttl.seconds", 30 * 60);
+    public static final CachedDynamicIntProperty RECONNECT_DITHER = new CachedDynamicIntProperty(
+            "zuul.push.reconnect.dither.seconds", 3 * 60);
+    public static final CachedDynamicIntProperty UNAUTHENTICATED_CONN_TTL = new CachedDynamicIntProperty(
+            "zuul.push.noauth.ttl.seconds", 8);
+    public static final CachedDynamicIntProperty CLIENT_CLOSE_GRACE_PERIOD = new CachedDynamicIntProperty(
+            "zuul.push.client.close.grace.period", 4);
 
     private static Logger logger = LoggerFactory.getLogger(PushRegistrationHandler.class);
 
@@ -74,15 +79,14 @@ public abstract class PushRegistrationHandler extends ChannelInboundHandlerAdapt
         this.ctx = ctx;
         try {
             handleRead(ctx, msg);
-        }
-        finally {
+        } finally {
             ReferenceCountUtil.release(msg);
         }
     }
 
 
-    private void tearDown()  {
-        if (! destroyed.get()) {
+    private void tearDown() {
+        if (!destroyed.get()) {
             destroyed.set(true);
             if (authEvent != null) {
                 pushConnectionRegistry.remove(authEvent.getClientIdentity());
@@ -105,19 +109,21 @@ public abstract class PushRegistrationHandler extends ChannelInboundHandlerAdapt
     }
 
     protected final void sendErrorAndClose(int statusCode, String reasonText) {
-        ctx.writeAndFlush(serverClosingConnectionMessage(statusCode, reasonText)).addListener(ChannelFutureListener.CLOSE);
+        ctx.writeAndFlush(serverClosingConnectionMessage(statusCode, reasonText)).addListener(
+                ChannelFutureListener.CLOSE);
     }
 
     protected final void forceCloseConnectionFromServerSide() {
-        if (! destroyed.get()) {
+        if (!destroyed.get()) {
             sendErrorAndClose(1000, "server closed connection");
             logger.debug("server forcing close connection");
         }
     }
 
     private void closeIfNotAuthenticated() {
-        if (! isAuthenticated()) {
-            logger.error("Closing connection because it is still unauthenticated after {} seconds.", UNAUTHENTICATED_CONN_TTL.get());
+        if (!isAuthenticated()) {
+            logger.error("Closing connection because it is still unauthenticated after {} seconds.",
+                    UNAUTHENTICATED_CONN_TTL.get());
             forceCloseConnectionFromServerSide();
         }
     }
@@ -127,7 +133,8 @@ public abstract class PushRegistrationHandler extends ChannelInboundHandlerAdapt
             // Application level protocol for asking client to close connection
             ctx.writeAndFlush(goAwayMessage());
             // Force close connection if client doesn't close in reasonable time after we made request
-            ctx.executor().schedule(() -> forceCloseConnectionFromServerSide(), CLIENT_CLOSE_GRACE_PERIOD.get(), TimeUnit.SECONDS);
+            ctx.executor().schedule(() -> forceCloseConnectionFromServerSide(), CLIENT_CLOSE_GRACE_PERIOD.get(),
+                    TimeUnit.SECONDS);
         } else {
             forceCloseConnectionFromServerSide();
         }
@@ -141,15 +148,15 @@ public abstract class PushRegistrationHandler extends ChannelInboundHandlerAdapt
     @Override
     public final void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         this.ctx = ctx;
-        if (! destroyed.get()) {
-            if (evt == pushProtocol.getHandshakeCompleteEvent())  {
+        if (!destroyed.get()) {
+            if (evt == pushProtocol.getHandshakeCompleteEvent()) {
                 pushConnection = new PushConnection(pushProtocol, ctx);
                 // Unauthenticated connection, wait for small amount of time for a client to send auth token in
                 // a first web socket frame, otherwise close connection
-                ctx.executor().schedule(this::closeIfNotAuthenticated, UNAUTHENTICATED_CONN_TTL.get(), TimeUnit.SECONDS);
+                ctx.executor().schedule(this::closeIfNotAuthenticated, UNAUTHENTICATED_CONN_TTL.get(),
+                        TimeUnit.SECONDS);
                 logger.debug("WebSocket handshake complete.");
-            }
-            else if (evt instanceof PushUserAuth) {
+            } else if (evt instanceof PushUserAuth) {
                 authEvent = (PushUserAuth) evt;
                 if (authEvent.isSuccess()) {
                     logger.debug("registering client {}", authEvent);
@@ -179,12 +186,11 @@ public abstract class PushRegistrationHandler extends ChannelInboundHandlerAdapt
      * event loop doesn't block
      */
     protected void registerClient(ChannelHandlerContext ctx, PushUserAuth authEvent,
-                                 PushConnection conn, PushConnectionRegistry registry) {
+            PushConnection conn, PushConnectionRegistry registry) {
         registry.put(authEvent.getClientIdentity(), conn);
         //Make client reconnect after ttl seconds by closing this connection to limit stickiness of the client
         ctx.executor().schedule(this::requestClientToCloseConnection, ditheredReconnectDeadline(), TimeUnit.SECONDS);
     }
-
 
 
     /**

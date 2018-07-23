@@ -42,6 +42,7 @@ import com.netflix.zuul.stats.RequestMetricsPublisher;
  * Author: Arthur Gonigberg
  * Date: November 20, 2017
  */
+// TODO: 2018/7/2 by zmyer
 public class ZuulSampleModule extends AbstractModule {
     @Override
     protected void configure() {
@@ -57,10 +58,12 @@ public class ZuulSampleModule extends AbstractModule {
 
         // general server bindings
         bind(ServerStatusManager.class); // health/discovery status
-        bind(SessionContextDecorator.class).to(ZuulSessionContextDecorator.class); // decorate new sessions when requests come in
+        bind(SessionContextDecorator.class).to(
+                ZuulSessionContextDecorator.class); // decorate new sessions when requests come in
         bind(Registry.class).to(DefaultRegistry.class); // atlas metrics registry
         bind(RequestCompleteHandler.class).to(BasicRequestCompleteHandler.class); // metrics post-request completion
-        bind(AbstractDiscoveryClientOptionalArgs.class).to(DiscoveryClient.DiscoveryClientOptionalArgs.class); // discovery client
+        bind(AbstractDiscoveryClientOptionalArgs.class).to(
+                DiscoveryClient.DiscoveryClientOptionalArgs.class); // discovery client
         bind(RequestMetricsPublisher.class).to(BasicRequestMetricsPublisher.class); // timings publisher
 
         // access logger, including request ID generator

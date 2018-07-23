@@ -16,8 +16,8 @@
 
 package com.netflix.zuul.passport;
 
-public enum PassportState
-{
+// TODO: 2018/7/9 by zmyer
+public enum PassportState {
     IN_REQ_HEADERS_RECEIVED,
     IN_REQ_CONTENT_RECEIVED,
     IN_REQ_LAST_CONTENT_RECEIVED,
@@ -58,11 +58,11 @@ public enum PassportState
     FILTERS_INBOUND_BUF_END,
     FILTERS_OUTBOUND_BUF_START,
     FILTERS_OUTBOUND_BUF_END,
-    
+
     ORIGIN_CONN_ACQUIRE_START,
     ORIGIN_CONN_ACQUIRE_END,
     ORIGIN_CONN_ACQUIRE_FAILED,
-    
+
     MISC_IO_START,
     MISC_IO_STOP,
 

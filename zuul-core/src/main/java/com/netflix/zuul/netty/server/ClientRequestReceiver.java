@@ -16,10 +16,12 @@
 
 package com.netflix.zuul.netty.server;
 
+import com.netflix.netty.common.SourceAddressChannelHandler;
+import com.netflix.netty.common.ssl.SslHandshakeInfo;
+import com.netflix.zuul.context.CommonContextKeys;
 import com.netflix.zuul.context.Debug;
 import com.netflix.zuul.context.SessionContext;
 import com.netflix.zuul.context.SessionContextDecorator;
-import com.netflix.zuul.context.CommonContextKeys;
 import com.netflix.zuul.exception.ZuulException;
 import com.netflix.zuul.message.Headers;
 import com.netflix.zuul.message.http.HttpQueryParams;
@@ -38,26 +40,35 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.haproxy.HAProxyMessage;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCountUtil;
-import com.netflix.netty.common.SourceAddressChannelHandler;
-import com.netflix.netty.common.ssl.SslHandshakeInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
 
-import static com.netflix.zuul.netty.server.http2.Http2OrHttpHandler.PROTOCOL_NAME;
 import static com.netflix.netty.common.HttpLifecycleChannelHandler.CompleteEvent;
 import static com.netflix.netty.common.HttpLifecycleChannelHandler.CompleteReason;
 import static com.netflix.netty.common.HttpLifecycleChannelHandler.CompleteReason.SESSION_COMPLETE;
+import static com.netflix.zuul.netty.server.http2.Http2OrHttpHandler.PROTOCOL_NAME;
 
 
 /**
  * Created by saroskar on 1/6/17.
  */
+// TODO: 2018/7/3 by zmyer
 public class ClientRequestReceiver extends ChannelDuplexHandler {
 
     private final SessionContextDecorator decorator;
@@ -70,9 +81,10 @@ public class ClientRequestReceiver extends ChannelDuplexHandler {
     private static final String SCHEME_HTTPS = "https";
     public static final AttributeKey<HttpRequestMessage> ATTR_ZUUL_REQ = AttributeKey.newInstance("_zuul_request");
     public static final AttributeKey<HttpResponseMessage> ATTR_ZUUL_RESP = AttributeKey.newInstance("_zuul_response");
-    public static final AttributeKey<Boolean> ATTR_LAST_CONTENT_RECEIVED = AttributeKey.newInstance("_last_content_received");
+    public static final AttributeKey<Boolean> ATTR_LAST_CONTENT_RECEIVED = AttributeKey.newInstance(
+            "_last_content_received");
 
-
+    // TODO: 2018/7/9 by zmyer
     public ClientRequestReceiver(SessionContextDecorator decorator) {
         this.decorator = decorator;
     }
@@ -90,6 +102,7 @@ public class ClientRequestReceiver extends ChannelDuplexHandler {
         return value == null ? false : value.booleanValue();
     }
 
+    // TODO: 2018/7/9 by zmyer
     @Override
     public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
 
@@ -122,26 +135,24 @@ public class ClientRequestReceiver extends ChannelDuplexHandler {
 
             //Send the request down the filter pipeline
             ctx.fireChannelRead(zuulRequest);
-        }
-        else if (msg instanceof HttpContent) {
-            if ((zuulRequest != null) && (! zuulRequest.getContext().isCancelled())) {
+        } else if (msg instanceof HttpContent) {
+            if ((zuulRequest != null) && (!zuulRequest.getContext().isCancelled())) {
                 ctx.fireChannelRead(msg);
             } else {
                 //We already sent response for this request, these are laggard request body chunks that are still arriving
                 ReferenceCountUtil.release(msg);
             }
-        }
-        else if (msg instanceof HAProxyMessage) {
+        } else if (msg instanceof HAProxyMessage) {
             // do nothing, should already be handled by ElbProxyProtocolHandler
             LOG.debug("Received HAProxyMessage for Proxy Protocol IP: {}", ((HAProxyMessage) msg).sourceAddress());
             ReferenceCountUtil.release(msg);
-        }
-        else {
+        } else {
             LOG.debug("Received unrecognized message type. " + msg.getClass().getName());
             ReferenceCountUtil.release(msg);
         }
     }
 
+    // TODO: 2018/7/9 by zmyer
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt instanceof CompleteEvent) {
@@ -163,9 +174,11 @@ public class ClientRequestReceiver extends ChannelDuplexHandler {
                         // With http/2, the netty codec closes/completes the stream immediately after writing the lastcontent
                         // of response to the channel, which causes this CompleteEvent to fire before we have cleaned up state. But
                         // thats ok, so don't log in that case.
-                        if (! "HTTP/2".equals(zuulRequest.getProtocol())) {
-                            LOG.info("Client {} request UUID {} to {} completed with reason = {}, {}", clientRequest.method(),
-                                    zuulCtx.getUUID(), clientRequest.uri(), reason.name(), ChannelUtils.channelInfoForLogging(ctx.channel()));
+                        if (!"HTTP/2".equals(zuulRequest.getProtocol())) {
+                            LOG.info("Client {} request UUID {} to {} completed with reason = {}, {}",
+                                    clientRequest.method(),
+                                    zuulCtx.getUUID(), clientRequest.uri(), reason.name(),
+                                    ChannelUtils.channelInfoForLogging(ctx.channel()));
                         }
                     }
                 }
@@ -182,7 +195,7 @@ public class ClientRequestReceiver extends ChannelDuplexHandler {
 
         super.userEventTriggered(ctx, evt);
 
-        if (evt instanceof  CompleteEvent) {
+        if (evt instanceof CompleteEvent) {
             final Channel channel = ctx.channel();
             channel.attr(ATTR_ZUUL_REQ).set(null);
             channel.attr(ATTR_ZUUL_RESP).set(null);
@@ -194,12 +207,14 @@ public class ClientRequestReceiver extends ChannelDuplexHandler {
         debugInfo.forEach((dbg) -> LOG.debug(dbg));
     }
 
+    // TODO: 2018/7/9 by zmyer
     private void handleExpect100Continue(ChannelHandlerContext ctx, HttpRequest req) {
         if (HttpUtil.is100ContinueExpected(req)) {
-            final ChannelFuture f = ctx.writeAndFlush(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE));
+            final ChannelFuture f = ctx.writeAndFlush(
+                    new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE));
             f.addListener((s) -> {
-                if (! s.isSuccess()) {
-                    throw new ZuulException( s.cause(), "Failed while writing 100-continue response", true);
+                if (!s.isSuccess()) {
+                    throw new ZuulException(s.cause(), "Failed while writing 100-continue response", true);
                 }
             });
             // Remove the Expect: 100-Continue header from request as we don't want to proxy it downstream.
@@ -208,8 +223,10 @@ public class ClientRequestReceiver extends ChannelDuplexHandler {
         }
     }
 
+    // TODO: 2018/7/9 by zmyer
     // Build a ZuulMessage from the netty request.
-    private HttpRequestMessage buildZuulHttpRequest(final HttpRequest nativeRequest, final ChannelHandlerContext clientCtx) {
+    private HttpRequestMessage buildZuulHttpRequest(final HttpRequest nativeRequest,
+            final ChannelHandlerContext clientCtx) {
         // Setup the context for this request.
         final SessionContext context;
         if (decorator != null) { // Optionally decorate the context.
@@ -217,8 +234,7 @@ public class ClientRequestReceiver extends ChannelDuplexHandler {
             // Store the netty channel in SessionContext.
             tempContext.set(CommonContextKeys.NETTY_SERVER_CHANNEL_HANDLER_CONTEXT, clientCtx);
             context = decorator.decorate(tempContext);
-        }
-        else {
+        } else {
             context = new SessionContext();
         }
 
@@ -305,29 +321,28 @@ public class ClientRequestReceiver extends ChannelDuplexHandler {
         return HttpQueryParams.parse(query);
     }
 
-
+    // TODO: 2018/7/9 by zmyer
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         if (msg instanceof HttpResponse) {
             promise.addListener((future) -> {
-                if (! future.isSuccess()) {
+                if (!future.isSuccess()) {
                     fireWriteError("response headers", future.cause(), ctx);
                 }
             });
             super.write(ctx, msg, promise);
-        }
-        else if (msg instanceof HttpContent) {
+        } else if (msg instanceof HttpContent) {
             promise.addListener((future) -> {
-                if (! future.isSuccess())  {
+                if (!future.isSuccess()) {
                     fireWriteError("response content", future.cause(), ctx);
                 }
             });
             super.write(ctx, msg, promise);
-        }
-        else {
+        } else {
             //should never happen
             ReferenceCountUtil.release(msg);
-            throw new ZuulException("Attempt to write invalid content type to client: "+msg.getClass().getSimpleName(), true);
+            throw new ZuulException(
+                    "Attempt to write invalid content type to client: " + msg.getClass().getSimpleName(), true);
         }
     }
 

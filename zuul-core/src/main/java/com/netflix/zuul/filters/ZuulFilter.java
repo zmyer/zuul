@@ -27,8 +27,8 @@ import rx.Observable;
  *         Date: 10/27/11
  *         Time: 3:03 PM
  */
-public interface ZuulFilter<I extends ZuulMessage, O extends ZuulMessage> extends ShouldFilter<I>
-{
+// TODO: 2018/7/4 by zmyer
+public interface ZuulFilter<I extends ZuulMessage, O extends ZuulMessage> extends ShouldFilter<I> {
     boolean isDisabled();
 
     String filterName();

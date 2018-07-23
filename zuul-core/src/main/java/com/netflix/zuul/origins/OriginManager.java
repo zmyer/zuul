@@ -22,6 +22,7 @@ import com.netflix.zuul.context.SessionContext;
  * Date: 5/11/15
  * Time: 3:15 PM
  */
+// TODO: 2018/7/9 by zmyer
 public interface OriginManager<T extends Origin> {
 
     T getOrigin(String name, String vip, String uri, SessionContext ctx);

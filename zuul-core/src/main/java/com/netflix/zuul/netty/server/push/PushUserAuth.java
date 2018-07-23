@@ -15,6 +15,7 @@
  */
 package com.netflix.zuul.netty.server.push;
 
+// TODO: 2018/7/6 by zmyer
 public interface PushUserAuth {
 
     boolean isSuccess();

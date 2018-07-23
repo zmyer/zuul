@@ -30,37 +30,31 @@ import io.netty.handler.timeout.IdleStateEvent;
  * Date: 9/24/16
  * Time: 2:41 PM
  */
-public class PassportStateServerHandler extends CombinedChannelDuplexHandler
-{
-    public PassportStateServerHandler()
-    {
+// TODO: 2018/7/2 by zmyer
+public class PassportStateServerHandler extends CombinedChannelDuplexHandler {
+    public PassportStateServerHandler() {
         super(new InboundHandler(), new OutboundHandler());
     }
 
-    private static CurrentPassport passport(ChannelHandlerContext ctx)
-    {
+    private static CurrentPassport passport(ChannelHandlerContext ctx) {
         return CurrentPassport.fromChannel(ctx.channel());
     }
-    
-    private static class InboundHandler extends ChannelInboundHandlerAdapter
-    {
+
+    private static class InboundHandler extends ChannelInboundHandlerAdapter {
         @Override
-        public void channelActive(ChannelHandlerContext ctx) throws Exception
-        {
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
             passport(ctx).add(PassportState.SERVER_CH_ACTIVE);
             super.channelActive(ctx);
         }
 
         @Override
-        public void channelInactive(ChannelHandlerContext ctx) throws Exception
-        {
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
             passport(ctx).add(PassportState.SERVER_CH_INACTIVE);
             super.channelInactive(ctx);
         }
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
-        {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
             passport(ctx).add(PassportState.SERVER_CH_EXCEPTION);
             super.exceptionCaught(ctx, cause);
         }
@@ -78,25 +72,21 @@ public class PassportStateServerHandler extends CombinedChannelDuplexHandler
         }
     }
 
-    private static class OutboundHandler extends ChannelOutboundHandlerAdapter
-    {
+    private static class OutboundHandler extends ChannelOutboundHandlerAdapter {
         @Override
-        public void close(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception
-        {
+        public void close(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
             passport(ctx).add(PassportState.SERVER_CH_CLOSE);
             super.close(ctx, promise);
         }
 
         @Override
-        public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception
-        {
+        public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
             passport(ctx).add(PassportState.SERVER_CH_DISCONNECT);
             super.disconnect(ctx, promise);
         }
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
-        {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
             passport(ctx).add(PassportState.SERVER_CH_EXCEPTION);
             super.exceptionCaught(ctx, cause);
         }

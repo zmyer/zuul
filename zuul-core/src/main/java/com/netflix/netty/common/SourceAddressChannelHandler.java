@@ -17,11 +17,9 @@
 package com.netflix.netty.common;
 
 import com.netflix.config.DynamicIntProperty;
-import com.netflix.netty.common.proxyprotocol.ElbProxyProtocolChannelHandler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.handler.codec.haproxy.HAProxyProtocolVersion;
 import io.netty.util.AttributeKey;
 
 import java.net.InetSocketAddress;
@@ -36,22 +34,24 @@ import java.net.SocketAddress;
  * Date: 4/14/16
  * Time: 4:29 PM
  */
-public class SourceAddressChannelHandler extends ChannelInboundHandlerAdapter
-{
-    public static final AttributeKey<InetSocketAddress> ATTR_SOURCE_INET_ADDR = AttributeKey.newInstance("_source_inet_addr");
+// TODO: 2018/7/2 by zmyer
+public class SourceAddressChannelHandler extends ChannelInboundHandlerAdapter {
+    public static final AttributeKey<InetSocketAddress> ATTR_SOURCE_INET_ADDR = AttributeKey.newInstance(
+            "_source_inet_addr");
     public static final AttributeKey<String> ATTR_SOURCE_ADDRESS = AttributeKey.newInstance("_source_address");
     public static final AttributeKey<Integer> ATTR_SOURCE_PORT = AttributeKey.newInstance("_source_port");
-    public static final AttributeKey<InetSocketAddress> ATTR_LOCAL_INET_ADDR = AttributeKey.newInstance("_local_inet_addr");
+    public static final AttributeKey<InetSocketAddress> ATTR_LOCAL_INET_ADDR = AttributeKey.newInstance(
+            "_local_inet_addr");
     public static final AttributeKey<String> ATTR_LOCAL_ADDRESS = AttributeKey.newInstance("_local_address");
     public static final AttributeKey<Integer> ATTR_LOCAL_PORT = AttributeKey.newInstance("_local_port");
 
-    public static final AttributeKey<Boolean> ATTR_TCP_PASSTHROUGH_INBOUND_CONN = AttributeKey.newInstance("_tcp_passthrough_inbound_conn");
+    public static final AttributeKey<Boolean> ATTR_TCP_PASSTHROUGH_INBOUND_CONN = AttributeKey.newInstance(
+            "_tcp_passthrough_inbound_conn");
     public static final DynamicIntProperty INBOUND_TCP_PASSTHROUGH__PORT =
             new DynamicIntProperty("zuul.server.port.tcp.passthrough", 7006);
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception
-    {
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
         InetSocketAddress sourceAddress = sourceAddress(ctx.channel());
         ctx.channel().attr(ATTR_SOURCE_INET_ADDR).setIfAbsent(sourceAddress);
         ctx.channel().attr(ATTR_SOURCE_ADDRESS).setIfAbsent(sourceAddress.getAddress().getHostAddress());
@@ -67,8 +67,7 @@ public class SourceAddressChannelHandler extends ChannelInboundHandlerAdapter
         super.channelActive(ctx);
     }
 
-    private InetSocketAddress sourceAddress(Channel channel)
-    {
+    private InetSocketAddress sourceAddress(Channel channel) {
         SocketAddress remoteSocketAddr = channel.remoteAddress();
         if (null != remoteSocketAddr && InetSocketAddress.class.isAssignableFrom(remoteSocketAddr.getClass())) {
             InetSocketAddress inetSocketAddress = (InetSocketAddress) remoteSocketAddr;
@@ -79,8 +78,7 @@ public class SourceAddressChannelHandler extends ChannelInboundHandlerAdapter
         return null;
     }
 
-    private InetSocketAddress localAddress(Channel channel)
-    {
+    private InetSocketAddress localAddress(Channel channel) {
         SocketAddress localSocketAddress = channel.localAddress();
         if (null != localSocketAddress && InetSocketAddress.class.isAssignableFrom(localSocketAddress.getClass())) {
             InetSocketAddress inetSocketAddress = (InetSocketAddress) localSocketAddress;

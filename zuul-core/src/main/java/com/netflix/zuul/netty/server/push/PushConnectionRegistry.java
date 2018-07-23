@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentMap;
  *
  * Created by saroskar on 9/26/16.
  */
+// TODO: 2018/7/6 by zmyer
 @Singleton
 public class PushConnectionRegistry {
 
@@ -58,6 +59,7 @@ public class PushConnectionRegistry {
         return clientPushConnectionMap.size();
     }
 
+    // TODO: 2018/7/9 by zmyer
     public static class PushConnection {
         private final PushProtocol pushProtocol;
         private final ChannelHandlerContext ctx;

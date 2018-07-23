@@ -17,9 +17,7 @@
 package com.netflix.netty.common.proxyprotocol;
 
 import com.netflix.config.CachedDynamicBooleanProperty;
-import com.netflix.config.DynamicStringProperty;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.ProtocolDetectionResult;
@@ -38,18 +36,20 @@ import org.slf4j.LoggerFactory;
  * Date: 3/24/16
  * Time: 3:13 PM
  */
-public class OptionalHAProxyMessageDecoder extends ChannelInboundHandlerAdapter
-{
+// TODO: 2018/7/6 by zmyer
+public class OptionalHAProxyMessageDecoder extends ChannelInboundHandlerAdapter {
     public static final String NAME = "OptionalHAProxyMessageDecoder";
     private static final Logger logger = LoggerFactory.getLogger("OptionalHAProxyMessageDecoder");
-    private static final CachedDynamicBooleanProperty dumpHAProxyByteBuf = new CachedDynamicBooleanProperty("zuul.haproxy.dump.bytebuf", false);
+    private static final CachedDynamicBooleanProperty dumpHAProxyByteBuf = new CachedDynamicBooleanProperty(
+            "zuul.haproxy.dump.bytebuf", false);
 
+    // TODO: 2018/7/6 by zmyer
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
-    {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof ByteBuf) {
             try {
-                ProtocolDetectionResult<HAProxyProtocolVersion> result = HAProxyMessageDecoder.detectProtocol((ByteBuf) msg);
+                ProtocolDetectionResult<HAProxyProtocolVersion> result = HAProxyMessageDecoder.detectProtocol(
+                        (ByteBuf) msg);
 
                 // TODO - is it possible that this message could be split over multiple ByteBufS, and therefore this would fail?
                 if (result.state() == ProtocolDetectionState.DETECTED) {

@@ -33,9 +33,9 @@ import java.util.Collection;
 /**
  * Strip out any X-Forwarded-* headers from inbound http requests if connection is not trusted.
  */
+// TODO: 2018/7/2 by zmyer
 @ChannelHandler.Sharable
-public class StripUntrustedProxyHeadersHandler extends ChannelInboundHandlerAdapter
-{
+public class StripUntrustedProxyHeadersHandler extends ChannelInboundHandlerAdapter {
     public enum AllowWhen {
         ALWAYS,
         MUTUAL_SSL_AUTH,
@@ -52,40 +52,37 @@ public class StripUntrustedProxyHeadersHandler extends ChannelInboundHandlerAdap
 
     private final AllowWhen allowWhen;
 
-    public StripUntrustedProxyHeadersHandler(AllowWhen allowWhen)
-    {
+    public StripUntrustedProxyHeadersHandler(AllowWhen allowWhen) {
         this.allowWhen = allowWhen;
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
-    {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             HttpRequest req = (HttpRequest) msg;
 
             switch (allowWhen) {
-                case NEVER:
+            case NEVER:
+                stripXFFHeaders(req);
+                break;
+            case MUTUAL_SSL_AUTH:
+                if (!connectionIsUsingMutualSSLWithAuthEnforced(ctx.channel())) {
                     stripXFFHeaders(req);
-                    break;
-                case MUTUAL_SSL_AUTH:
-                    if (! connectionIsUsingMutualSSLWithAuthEnforced(ctx.channel())) {
-                        stripXFFHeaders(req);
-                    }
-                    break;
-                case ALWAYS:
-                    // Do nothing.
-                    break;
-                default:
-                    // default to not allow.
-                    stripXFFHeaders(req);
+                }
+                break;
+            case ALWAYS:
+                // Do nothing.
+                break;
+            default:
+                // default to not allow.
+                stripXFFHeaders(req);
             }
         }
 
         super.channelRead(ctx, msg);
     }
 
-    private boolean connectionIsUsingMutualSSLWithAuthEnforced(Channel ch)
-    {
+    private boolean connectionIsUsingMutualSSLWithAuthEnforced(Channel ch) {
         boolean is = false;
         SslHandshakeInfo sslHandshakeInfo = ch.attr(SslHandshakeInfoHandler.ATTR_SSL_INFO).get();
         if (sslHandshakeInfo != null) {
@@ -96,8 +93,7 @@ public class StripUntrustedProxyHeadersHandler extends ChannelInboundHandlerAdap
         return is;
     }
 
-    private void stripXFFHeaders(HttpRequest req)
-    {
+    private void stripXFFHeaders(HttpRequest req) {
         HttpHeaders headers = req.headers();
         for (AsciiString headerName : HEADERS_TO_STRIP) {
             headers.remove(headerName);

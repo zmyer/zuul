@@ -32,7 +32,11 @@ import org.mockito.runners.MockitoJUnitRunner;
 
 import java.io.NotSerializableException;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -42,10 +46,11 @@ import static org.junit.Assert.assertEquals;
  *
  * NOTE: Not threadsafe, and not intended to be used concurrently.
  */
-public class SessionContext extends HashMap<String, Object> implements Cloneable
-{
+// TODO: 2018/7/9 by zmyer
+public class SessionContext extends HashMap<String, Object> implements Cloneable {
     private static final int INITIAL_SIZE =
-            DynamicPropertyFactory.getInstance().getIntProperty("com.netflix.zuul.context.SessionContext.initialSize", 60).get();
+            DynamicPropertyFactory.getInstance().getIntProperty("com.netflix.zuul.context.SessionContext.initialSize",
+                    60).get();
 
     private boolean brownoutMode = false;
     private boolean shouldStopFilterProcessing = false;
@@ -68,8 +73,7 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
     private static final String KEY_FILTER_ERRORS = "_filter_errors";
     private static final String KEY_FILTER_EXECS = "_filter_executions";
 
-    public SessionContext()
-    {
+    public SessionContext() {
         // Use a higher than default initial capacity for the hashmap as we generally have more than the default
         // 16 entries.
         super(INITIAL_SIZE);
@@ -85,13 +89,11 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
      * @return
      */
     @Override
-    public SessionContext clone()
-    {
+    public SessionContext clone() {
         return (SessionContext) super.clone();
     }
 
-    public String getString(String key)
-    {
+    public String getString(String key) {
         return (String) get(key);
     }
 
@@ -136,8 +138,11 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
      * @param value
      */
     public void set(String key, Object value) {
-        if (value != null) put(key, value);
-        else remove(key);
+        if (value != null) {
+            put(key, value);
+        } else {
+            remove(key);
+        }
     }
 
     /**
@@ -145,8 +150,7 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
      *
      * @return
      */
-    public SessionContext copy()
-    {
+    public SessionContext copy() {
         SessionContext copy = new SessionContext();
         copy.brownoutMode = brownoutMode;
         copy.cancelled = cancelled;
@@ -181,18 +185,18 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
         return copy;
     }
 
-    public String getUUID()
-    {
+    public String getUUID() {
         return getString(KEY_UUID);
     }
-    public void setUUID(String uuid)
-    {
+
+    public void setUUID(String uuid) {
         set(KEY_UUID, uuid);
     }
 
     public void setStaticResponse(HttpResponseMessage response) {
         set(KEY_STATIC_RESPONSE, response);
     }
+
     public HttpResponseMessage getStaticResponse() {
         return (HttpResponseMessage) get(KEY_STATIC_RESPONSE);
     }
@@ -220,6 +224,7 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
     public String getErrorEndpoint() {
         return (String) get("_error-endpoint");
     }
+
     public void setErrorEndpoint(String name) {
         put("_error-endpoint", name);
     }
@@ -302,9 +307,12 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
      * appends filter name and status to the filter execution history for the
      * current request
      */
+    // TODO: 2018/7/10 by zmyer
     public void addFilterExecutionSummary(String name, String status, long time) {
         StringBuilder sb = getFilterExecutionSummary();
-        if (sb.length() > 0) sb.append(", ");
+        if (sb.length() > 0) {
+            sb.append(", ");
+        }
         sb.append(name).append('[').append(status).append(']').append('[').append(time).append("ms]");
     }
 
@@ -314,7 +322,6 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
     public StringBuilder getFilterExecutionSummary() {
         return (StringBuilder) get(KEY_FILTER_EXECS);
     }
-
 
 
     public boolean shouldSendErrorResponse() {
@@ -335,6 +342,7 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
     public boolean errorResponseSent() {
         return this.errorResponseSent;
     }
+
     public void setErrorResponseSent(boolean should) {
         this.errorResponseSent = should;
     }
@@ -346,12 +354,11 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
      *
      * @return
      */
-    public boolean isInBrownoutMode()
-    {
+    public boolean isInBrownoutMode() {
         return brownoutMode;
     }
-    public void setInBrownoutMode()
-    {
+
+    public void setInBrownoutMode() {
         this.brownoutMode = true;
     }
 
@@ -362,6 +369,7 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
     public void stopFilterProcessing() {
         shouldStopFilterProcessing = true;
     }
+
     public boolean shouldStopFilterProcessing() {
         return shouldStopFilterProcessing;
     }
@@ -385,12 +393,11 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
         set(KEY_VIP, sVip);
     }
 
-    public void setEndpoint(String endpoint)
-    {
+    public void setEndpoint(String endpoint) {
         put(KEY_ENDPOINT, endpoint);
     }
-    public String getEndpoint()
-    {
+
+    public String getEndpoint() {
         return (String) get(KEY_ENDPOINT);
     }
 
@@ -406,17 +413,15 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
         return (List<FilterError>) get(KEY_FILTER_ERRORS);
     }
 
-    public Timings getTimings()
-    {
+    public Timings getTimings() {
         return timings;
     }
 
-    public void setOriginReportedDuration(int duration)
-    {
+    public void setOriginReportedDuration(int duration) {
         put("_originReportedDuration", duration);
     }
-    public int getOriginReportedDuration()
-    {
+
+    public int getOriginReportedDuration() {
         Object value = get("_originReportedDuration");
         if (value != null) {
             return (Integer) value;
@@ -433,11 +438,9 @@ public class SessionContext extends HashMap<String, Object> implements Cloneable
     }
 
     @RunWith(MockitoJUnitRunner.class)
-    public static class UnitTest
-    {
+    public static class UnitTest {
         @Test
-        public void testBoolean()
-        {
+        public void testBoolean() {
             SessionContext context = new SessionContext();
             assertEquals(context.getBoolean("boolean_test"), Boolean.FALSE);
             assertEquals(context.getBoolean("boolean_test", true), true);

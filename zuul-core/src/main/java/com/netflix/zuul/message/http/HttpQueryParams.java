@@ -27,7 +27,12 @@ import org.mockito.runners.MockitoJUnitRunner;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringTokenizer;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -36,21 +41,19 @@ import static junit.framework.Assert.assertEquals;
  * Date: 2/24/15
  * Time: 10:58 AM
  */
-public class HttpQueryParams implements Cloneable
-{
+// TODO: 2018/7/9 by zmyer
+public class HttpQueryParams implements Cloneable {
     private final ListMultimap<String, String> delegate;
     private final boolean immutable;
     private final HashMap<String, Boolean> trailingEquals;
 
-    public HttpQueryParams()
-    {
+    public HttpQueryParams() {
         delegate = ArrayListMultimap.create();
         immutable = false;
         trailingEquals = new HashMap<>();
     }
 
-    private HttpQueryParams(ListMultimap<String, String> delegate)
-    {
+    private HttpQueryParams(ListMultimap<String, String> delegate) {
         this.delegate = delegate;
         immutable = ImmutableListMultimap.class.isAssignableFrom(delegate.getClass());
         trailingEquals = new HashMap<>();
@@ -75,8 +78,7 @@ public class HttpQueryParams implements Cloneable
                 try {
                     name = URLDecoder.decode(name, "UTF-8");
                     value = URLDecoder.decode(value, "UTF-8");
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     // do nothing
                 }
 
@@ -93,8 +95,7 @@ public class HttpQueryParams implements Cloneable
 
                 try {
                     name = URLDecoder.decode(name, "UTF-8");
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     // do nothing
                 }
 
@@ -112,8 +113,7 @@ public class HttpQueryParams implements Cloneable
      * @param name
      * @return
      */
-    public String getFirst(String name)
-    {
+    public String getFirst(String name) {
         List<String> values = delegate.get(name);
         if (values != null) {
             if (values.size() > 0) {
@@ -123,18 +123,15 @@ public class HttpQueryParams implements Cloneable
         return null;
     }
 
-    public List<String> get(String name)
-    {
+    public List<String> get(String name) {
         return delegate.get(name.toLowerCase());
     }
 
-    public boolean contains(String name)
-    {
+    public boolean contains(String name) {
         return delegate.containsKey(name);
     }
 
-    public boolean contains(String name, String value)
-    {
+    public boolean contains(String name, String value) {
         return delegate.containsEntry(name, value);
     }
 
@@ -144,29 +141,24 @@ public class HttpQueryParams implements Cloneable
      * @param name
      * @param value
      */
-    public void set(String name, String value)
-    {
+    public void set(String name, String value) {
         delegate.removeAll(name);
-        delegate.put(name,  value);
-    }
-
-    public void add(String name, String value)
-    {
         delegate.put(name, value);
     }
 
-    public void removeAll(String name)
-    {
+    public void add(String name, String value) {
+        delegate.put(name, value);
+    }
+
+    public void removeAll(String name) {
         delegate.removeAll(name);
     }
 
-    public void clear()
-    {
+    public void clear() {
         delegate.clear();
     }
 
-    public Collection<Map.Entry<String, String>> entries()
-    {
+    public Collection<Map.Entry<String, String>> entries() {
         return delegate.entries();
     }
 
@@ -174,8 +166,7 @@ public class HttpQueryParams implements Cloneable
         return delegate.keySet();
     }
 
-    public String toEncodedString()
-    {
+    public String toEncodedString() {
         StringBuilder sb = new StringBuilder();
         try {
             for (Map.Entry<String, String> entry : entries()) {
@@ -183,8 +174,7 @@ public class HttpQueryParams implements Cloneable
                 if (StringUtils.isNotEmpty(entry.getValue())) {
                     sb.append('=');
                     sb.append(URLEncoder.encode(entry.getValue(), "UTF-8"));
-                }
-                else if (isTrailingEquals(entry.getKey())) {
+                } else if (isTrailingEquals(entry.getKey())) {
                     sb.append('=');
                 }
                 sb.append('&');
@@ -194,8 +184,7 @@ public class HttpQueryParams implements Cloneable
             if (sb.length() > 0 && '&' == sb.charAt(sb.length() - 1)) {
                 sb.deleteCharAt(sb.length() - 1);
             }
-        }
-        catch (UnsupportedEncodingException e) {
+        } catch (UnsupportedEncodingException e) {
             // Won't happen.
             e.printStackTrace();
         }
@@ -203,8 +192,7 @@ public class HttpQueryParams implements Cloneable
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, String> entry : entries()) {
             sb.append(entry.getKey());
@@ -223,20 +211,17 @@ public class HttpQueryParams implements Cloneable
     }
 
     @Override
-    protected HttpQueryParams clone()
-    {
+    protected HttpQueryParams clone() {
         HttpQueryParams copy = new HttpQueryParams();
         copy.delegate.putAll(this.delegate);
         return copy;
     }
 
-    public HttpQueryParams immutableCopy()
-    {
+    public HttpQueryParams immutableCopy() {
         return new HttpQueryParams(ImmutableListMultimap.copyOf(delegate));
     }
 
-    public boolean isImmutable()
-    {
+    public boolean isImmutable() {
         return immutable;
     }
 
@@ -249,18 +234,18 @@ public class HttpQueryParams implements Cloneable
     }
 
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         return delegate.hashCode();
     }
 
     @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null)
+    public boolean equals(Object obj) {
+        if (obj == null) {
             return false;
-        if (! (obj instanceof HttpQueryParams))
+        }
+        if (!(obj instanceof HttpQueryParams)) {
             return false;
+        }
 
         HttpQueryParams hqp2 = (HttpQueryParams) obj;
         return Iterables.elementsEqual(delegate.entries(), hqp2.delegate.entries());
@@ -268,11 +253,9 @@ public class HttpQueryParams implements Cloneable
 
 
     @RunWith(MockitoJUnitRunner.class)
-    public static class TestUnit
-    {
+    public static class TestUnit {
         @Test
-        public void testMultiples()
-        {
+        public void testMultiples() {
             HttpQueryParams qp = new HttpQueryParams();
             qp.add("k1", "v1");
             qp.add("k1", "v2");
@@ -282,8 +265,7 @@ public class HttpQueryParams implements Cloneable
         }
 
         @Test
-        public void testToEncodedString()
-        {
+        public void testToEncodedString() {
             HttpQueryParams qp = new HttpQueryParams();
             qp.add("k'1", "v1&");
             assertEquals("k%271=v1%26", qp.toEncodedString());
@@ -294,8 +276,7 @@ public class HttpQueryParams implements Cloneable
         }
 
         @Test
-        public void testToString()
-        {
+        public void testToString() {
             HttpQueryParams qp = new HttpQueryParams();
             qp.add("k'1", "v1&");
             assertEquals("k'1=v1&", qp.toString());
@@ -306,8 +287,7 @@ public class HttpQueryParams implements Cloneable
         }
 
         @Test
-        public void testEquals()
-        {
+        public void testEquals() {
             HttpQueryParams qp1 = new HttpQueryParams();
             qp1.add("k1", "v1");
             qp1.add("k2", "v2");
@@ -319,8 +299,7 @@ public class HttpQueryParams implements Cloneable
         }
 
         @Test
-        public void testParseKeysWithoutValues()
-        {
+        public void testParseKeysWithoutValues() {
             HttpQueryParams expected = new HttpQueryParams();
             expected.add("k1", "");
             expected.add("k2", "v2");
@@ -334,8 +313,7 @@ public class HttpQueryParams implements Cloneable
         }
 
         @Test
-        public void testParseKeyWithoutValueEquals()
-        {
+        public void testParseKeyWithoutValueEquals() {
             HttpQueryParams expected = new HttpQueryParams();
             expected.add("k1", "");
 
@@ -347,8 +325,7 @@ public class HttpQueryParams implements Cloneable
         }
 
         @Test
-        public void testParseKeyWithoutValue()
-        {
+        public void testParseKeyWithoutValue() {
             HttpQueryParams expected = new HttpQueryParams();
             expected.add("k1", "");
 
@@ -360,8 +337,7 @@ public class HttpQueryParams implements Cloneable
         }
 
         @Test
-        public void testParseKeyWithoutValueShort()
-        {
+        public void testParseKeyWithoutValueShort() {
             HttpQueryParams expected = new HttpQueryParams();
             expected.add("=", "");
 
@@ -373,8 +349,7 @@ public class HttpQueryParams implements Cloneable
         }
 
         @Test
-        public void testParseKeysWithoutValuesMixedTrailers()
-        {
+        public void testParseKeysWithoutValuesMixedTrailers() {
             HttpQueryParams expected = new HttpQueryParams();
             expected.add("k1", "");
             expected.add("k2", "v2");

@@ -25,6 +25,7 @@ import io.netty.handler.codec.http.HttpServerCodec;
  * Author: Susheel Aroskar
  * Date: 5/16/18
  */
+// TODO: 2018/7/6 by zmyer
 public abstract class PushMessageSenderInitializer extends ChannelInitializer<Channel> {
 
     private final PushConnectionRegistry pushConnectionRegistry;

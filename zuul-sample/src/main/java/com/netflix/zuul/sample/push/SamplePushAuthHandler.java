@@ -33,6 +33,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
  * Author: Susheel Aroskar
  * Date: 5/16/18
  */
+// TODO: 2018/7/6 by zmyer
 @ChannelHandler.Sharable
 public class SamplePushAuthHandler extends PushAuthHandler {
 
@@ -51,11 +52,12 @@ public class SamplePushAuthHandler extends PushAuthHandler {
         return false;
     }
 
+    // TODO: 2018/7/6 by zmyer
     @Override
     protected PushUserAuth doAuth(FullHttpRequest req) {
         final Cookies cookies = parseCookies(req);
         for (final Cookie c : cookies.getAll()) {
-            if(c.getName().equals("userAuthCookie")) {
+            if (c.getName().equals("userAuthCookie")) {
                 final String customerId = c.getValue();
                 if (!Strings.isNullOrEmpty(customerId)) {
                     return new SamplePushUserAuth(customerId);

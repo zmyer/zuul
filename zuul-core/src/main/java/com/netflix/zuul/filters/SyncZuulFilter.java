@@ -23,7 +23,7 @@ import com.netflix.zuul.message.ZuulMessage;
  * Date: 11/16/15
  * Time: 2:07 PM
  */
-public interface SyncZuulFilter<I extends ZuulMessage, O extends ZuulMessage> extends ZuulFilter<I, O>
-{
+// TODO: 2018/7/10 by zmyer
+public interface SyncZuulFilter<I extends ZuulMessage, O extends ZuulMessage> extends ZuulFilter<I, O> {
     O apply(I input);
 }

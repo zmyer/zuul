@@ -20,6 +20,7 @@ package com.netflix.zuul.context;
  * Date: 2/25/15
  * Time: 4:09 PM
  */
+// TODO: 2018/7/3 by zmyer
 public interface SessionContextDecorator {
     public SessionContext decorate(SessionContext ctx);
 }

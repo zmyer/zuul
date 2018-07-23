@@ -56,6 +56,7 @@ import static com.netflix.zuul.filters.FilterType.INBOUND;
  * Subclasses of this class are supposed to be thread safe and hence should not have any non final member variables
  * Created by saroskar on 5/18/17.
  */
+// TODO: 2018/7/10 by zmyer
 @ThreadSafe
 public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends ZuulMessage> implements FilterRunner<I, O> {
 
@@ -67,13 +68,15 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
     private static final Logger LOG = LoggerFactory.getLogger(BaseZuulFilterRunner.class);
 
 
-    protected BaseZuulFilterRunner(FilterType filterType, FilterUsageNotifier usageNotifier, FilterRunner<O, ?> nextStage) {
+    protected BaseZuulFilterRunner(FilterType filterType, FilterUsageNotifier usageNotifier,
+            FilterRunner<O, ?> nextStage) {
         this.usageNotifier = Preconditions.checkNotNull(usageNotifier, "filter usage notifier");
         this.nextStage = nextStage;
         this.RUNNING_FILTER_IDX_SESSION_CTX_KEY = filterType + "RunningFilterIndex";
         this.AWAITING_BODY_FLAG_SESSION_CTX_KEY = filterType + "IsAwaitingBody";
     }
 
+    // TODO: 2018/7/10 by zmyer
     public static final ChannelHandlerContext getChannelHandlerContext(final ZuulMessage mesg) {
         return (ChannelHandlerContext) checkNotNull(mesg.getContext().get(NETTY_SERVER_CHANNEL_HANDLER_CONTEXT),
                 "channel handler context");
@@ -91,7 +94,8 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
 
     protected final AtomicInteger getRunningFilterIndex(I zuulMesg) {
         final SessionContext ctx = zuulMesg.getContext();
-        return (AtomicInteger) Preconditions.checkNotNull(ctx.get(RUNNING_FILTER_IDX_SESSION_CTX_KEY), "runningFilterIndex");
+        return (AtomicInteger) Preconditions.checkNotNull(ctx.get(RUNNING_FILTER_IDX_SESSION_CTX_KEY),
+                "runningFilterIndex");
     }
 
     protected final boolean isFilterAwaitingBody(I zuulMesg) {
@@ -101,8 +105,7 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
     protected final void setFilterAwaitingBody(I zuulMesg, boolean flag) {
         if (flag) {
             zuulMesg.getContext().put(AWAITING_BODY_FLAG_SESSION_CTX_KEY, Boolean.TRUE);
-        }
-        else {
+        } else {
             zuulMesg.getContext().remove(AWAITING_BODY_FLAG_SESSION_CTX_KEY);
         }
     }
@@ -110,8 +113,7 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
     protected final void invokeNextStage(final O zuulMesg, final HttpContent chunk) {
         if (nextStage != null) {
             nextStage.filter(zuulMesg, chunk);
-        }
-        else {
+        } else {
             //Next stage is Netty channel handler
             getChannelHandlerContext(zuulMesg).fireChannelRead(chunk);
         }
@@ -120,13 +122,13 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
     protected final void invokeNextStage(final O zuulMesg) {
         if (nextStage != null) {
             nextStage.filter(zuulMesg);
-        }
-        else {
+        } else {
             //Next stage is Netty channel handler
             getChannelHandlerContext(zuulMesg).fireChannelRead(zuulMesg);
         }
     }
 
+    // TODO: 2018/7/10 by zmyer
     protected final O filter(final ZuulFilter<I, O> filter, final I inMesg) {
         final long startTime = System.currentTimeMillis();
         final ZuulMessage snapshot = inMesg.getContext().debugRouting() ? inMesg.clone() : null;
@@ -160,7 +162,9 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
             setFilterAwaitingBody(inMesg, false);
 
             if (snapshot != null) {
-                Debug.addRoutingDebug(inMesg.getContext(), "Filter " + filter.filterType().toString() + " " + filter.filterOrder() + " " + filter.filterName());
+                Debug.addRoutingDebug(inMesg.getContext(),
+                        "Filter " + filter.filterType().toString() + " " + filter.filterOrder() + " " +
+                                filter.filterName());
             }
 
             //run body contents accumulated so far through this filter
@@ -177,13 +181,12 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
             filter.incrementConcurrency();
             resumer = new FilterChainResumer(inMesg, filter, snapshot, startTime);
             filter.applyAsync(inMesg)
-                .observeOn(Schedulers.from(getChannelHandlerContext(inMesg).executor()))
-                .doOnUnsubscribe(resumer::decrementConcurrency)
-                .subscribe(resumer);
+                    .observeOn(Schedulers.from(getChannelHandlerContext(inMesg).executor()))
+                    .doOnUnsubscribe(resumer::decrementConcurrency)
+                    .subscribe(resumer);
 
             return null;  //wait for the async filter to finish
-        }
-        catch (Throwable t) {
+        } catch (Throwable t) {
             if (resumer != null) {
                 resumer.decrementConcurrency();
             }
@@ -194,6 +197,7 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
         }
     }
 
+    // TODO: 2018/7/10 by zmyer
     /* This is typically set by a filter when wanting to reject a request and also reduce load on the server by
        not processing any more filterChain */
     protected final boolean shouldSkipFilter(final I inMesg, final ZuulFilter<I, O> filter) {
@@ -234,8 +238,7 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
                 ", request-info=" + inMesg.getInfoForLogging() + ", msg=" + String.valueOf(t.getMessage());
         if (t instanceof ZuulException && !((ZuulException) t).shouldLogAsError()) {
             LOG.warn(errorMsg);
-        }
-        else {
+        } else {
             LOG.error(errorMsg, t);
         }
 
@@ -248,28 +251,30 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
         }
     }
 
+    // TODO: 2018/7/10 by zmyer
     protected void recordFilterCompletion(final ExecutionStatus status, final ZuulFilter<I, O> filter, long startTime,
-                                          final ZuulMessage zuulMesg, final ZuulMessage startSnapshot) {
+            final ZuulMessage zuulMesg, final ZuulMessage startSnapshot) {
 
         final SessionContext zuulCtx = zuulMesg.getContext();
         final long execTime = System.currentTimeMillis() - startTime;
 
         // Record the execution summary in context.
         switch (status) {
-            case FAILED:
-                zuulCtx.addFilterExecutionSummary(filter.filterName(), FAILED.name(), execTime);
-                break;
-            case SUCCESS:
-                zuulCtx.addFilterExecutionSummary(filter.filterName(), SUCCESS.name(), execTime);
-                if (startSnapshot != null) {
-                    //debugRouting == true
-                    Debug.addRoutingDebug(zuulCtx, "Filter {" + filter.filterName() + " TYPE:" + filter.filterType().toString()
-                            + " ORDER:" + filter.filterOrder() + "} Execution time = " + execTime + "ms");
-                    Debug.compareContextState(filter.filterName(), zuulCtx, startSnapshot.getContext());
-                }
-                break;
-            default:
-                break;
+        case FAILED:
+            zuulCtx.addFilterExecutionSummary(filter.filterName(), FAILED.name(), execTime);
+            break;
+        case SUCCESS:
+            zuulCtx.addFilterExecutionSummary(filter.filterName(), SUCCESS.name(), execTime);
+            if (startSnapshot != null) {
+                //debugRouting == true
+                Debug.addRoutingDebug(zuulCtx,
+                        "Filter {" + filter.filterName() + " TYPE:" + filter.filterType().toString()
+                                + " ORDER:" + filter.filterOrder() + "} Execution time = " + execTime + "ms");
+                Debug.compareContextState(filter.filterName(), zuulCtx, startSnapshot.getContext());
+            }
+            break;
+        default:
+            break;
         }
 
         LOG.debug("Filter {} completed with status {}, UUID {}", filter.filterName(), status.name(),
@@ -283,8 +288,7 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
         HttpRequestInfo zuulReq = null;
         if (zuulMesg instanceof HttpRequestMessage) {
             zuulReq = (HttpRequestMessage) zuulMesg;
-        }
-        else if (zuulMesg instanceof HttpResponseMessage) {
+        } else if (zuulMesg instanceof HttpResponseMessage) {
             zuulReq = ((HttpResponseMessage) zuulMesg).getInboundRequest();
         }
         final String path = (zuulReq != null) ? zuulReq.getPathAndQuery() : "-";
@@ -303,12 +307,12 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
     protected void resumeInBindingContext(final O zuulMesg, final String filterName) {
         try {
             methodBinding(zuulMesg).bind(() -> resume(zuulMesg));
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             handleException(zuulMesg, filterName, ex);
         }
     }
 
+    // TODO: 2018/7/10 by zmyer
     private final class FilterChainResumer implements Observer<O> {
         private final I inMesg;
         private final ZuulFilter<I, O> filter;
@@ -338,8 +342,7 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
                     outMesg = filter.getDefaultOutput(inMesg);
                 }
                 resumeInBindingContext(outMesg, filter.filterName());
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 decrementConcurrency();
                 handleException(inMesg, filter.filterName(), e);
             }
@@ -353,8 +356,7 @@ public abstract class BaseZuulFilterRunner<I extends ZuulMessage, O extends Zuul
                 recordFilterCompletion(FAILED, filter, startTime, inMesg, snapshot);
                 final O outMesg = handleFilterException(inMesg, filter, ex);
                 resumeInBindingContext(outMesg, filter.filterName());
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 handleException(inMesg, filter.filterName(), e);
             }
         }

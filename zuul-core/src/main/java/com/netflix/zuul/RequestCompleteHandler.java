@@ -18,8 +18,8 @@ package com.netflix.zuul;
 import com.netflix.zuul.message.http.HttpRequestInfo;
 import com.netflix.zuul.message.http.HttpResponseMessage;
 
-public interface RequestCompleteHandler
-{
+// TODO: 2018/7/9 by zmyer
+public interface RequestCompleteHandler {
     void handle(HttpRequestInfo inboundRequest, HttpResponseMessage response);
 }
 

@@ -32,8 +32,8 @@ import java.util.concurrent.ThreadLocalRandom;
  * Date: 7/17/17
  * Time: 10:54 AM
  */
-public abstract class AbstrHttpConnectionExpiryHandler extends ChannelOutboundHandlerAdapter
-{
+// TODO: 2018/7/3 by zmyer
+public abstract class AbstrHttpConnectionExpiryHandler extends ChannelOutboundHandlerAdapter {
     protected final static Logger LOG = LoggerFactory.getLogger(AbstrHttpConnectionExpiryHandler.class);
     protected final static CachedDynamicLongProperty MAX_EXPIRY_DELTA = new CachedDynamicLongProperty(
             "server.connection.expiry.delta", 20 * 1000);
@@ -47,8 +47,8 @@ public abstract class AbstrHttpConnectionExpiryHandler extends ChannelOutboundHa
     protected int requestCount = 0;
     protected int maxRequestsUnderBrownout = 0;
 
-    public AbstrHttpConnectionExpiryHandler(ConnectionCloseType connectionCloseType, int maxRequestsUnderBrownout, int maxRequests, int maxExpiry)
-    {
+    public AbstrHttpConnectionExpiryHandler(ConnectionCloseType connectionCloseType, int maxRequestsUnderBrownout,
+            int maxRequests, int maxExpiry) {
         this.connectionCloseType = connectionCloseType;
         this.maxRequestsUnderBrownout = maxRequestsUnderBrownout;
         this.maxRequests = maxRequests;
@@ -60,8 +60,7 @@ public abstract class AbstrHttpConnectionExpiryHandler extends ChannelOutboundHa
     }
 
     @Override
-    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception
-    {
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         if (isResponseHeaders(msg)) {
             // Update the request count attribute for this channel.
             requestCount++;
@@ -77,8 +76,7 @@ public abstract class AbstrHttpConnectionExpiryHandler extends ChannelOutboundHa
         super.write(ctx, msg, promise);
     }
 
-    protected boolean isConnectionExpired(ChannelHandlerContext ctx)
-    {
+    protected boolean isConnectionExpired(ChannelHandlerContext ctx) {
         boolean expired = requestCount >= maxRequests(ctx.channel()) ||
                 System.currentTimeMillis() > connectionExpiryTime;
         if (expired) {
@@ -91,12 +89,10 @@ public abstract class AbstrHttpConnectionExpiryHandler extends ChannelOutboundHa
 
     protected abstract boolean isResponseHeaders(Object msg);
 
-    protected int maxRequests(Channel ch)
-    {
+    protected int maxRequests(Channel ch) {
         if (HttpChannelFlags.IN_BROWNOUT.get(ch)) {
             return this.maxRequestsUnderBrownout;
-        }
-        else {
+        } else {
             return this.maxRequests;
         }
     }

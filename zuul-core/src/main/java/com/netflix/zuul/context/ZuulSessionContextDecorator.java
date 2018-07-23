@@ -34,6 +34,7 @@ import javax.inject.Singleton;
  * Author: Arthur Gonigberg
  * Date: November 21, 2017
  */
+// TODO: 2018/7/9 by zmyer
 @Singleton
 public class ZuulSessionContextDecorator implements SessionContextDecorator {
 
@@ -50,7 +51,8 @@ public class ZuulSessionContextDecorator implements SessionContextDecorator {
     public SessionContext decorate(SessionContext ctx) {
         // TODO split out commons parts from BaseSessionContextDecorator
 
-        ChannelHandlerContext nettyCtx = (ChannelHandlerContext) ctx.get(CommonContextKeys.NETTY_SERVER_CHANNEL_HANDLER_CONTEXT);
+        ChannelHandlerContext nettyCtx = (ChannelHandlerContext) ctx.get(
+                CommonContextKeys.NETTY_SERVER_CHANNEL_HANDLER_CONTEXT);
         if (nettyCtx == null) {
             return null;
         }
@@ -69,8 +71,10 @@ public class ZuulSessionContextDecorator implements SessionContextDecorator {
         ctx.put(CommonContextKeys.REQUEST_ATTEMPTS, new RequestAttempts());
 
         // Providers for getting the size of read/written request and response body sizes from channel.
-        ctx.set(CommonContextKeys.REQ_BODY_SIZE_PROVIDER, HttpBodySizeRecordingChannelHandler.getCurrentRequestBodySize(channel));
-        ctx.set(CommonContextKeys.RESP_BODY_SIZE_PROVIDER, HttpBodySizeRecordingChannelHandler.getCurrentResponseBodySize(channel));
+        ctx.set(CommonContextKeys.REQ_BODY_SIZE_PROVIDER,
+                HttpBodySizeRecordingChannelHandler.getCurrentRequestBodySize(channel));
+        ctx.set(CommonContextKeys.RESP_BODY_SIZE_PROVIDER,
+                HttpBodySizeRecordingChannelHandler.getCurrentResponseBodySize(channel));
 
         CurrentPassport passport = CurrentPassport.fromChannel(channel);
         ctx.set(CommonContextKeys.PASSPORT, passport);

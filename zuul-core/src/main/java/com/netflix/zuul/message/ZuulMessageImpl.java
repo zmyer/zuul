@@ -22,8 +22,8 @@ import com.netflix.config.DynamicPropertyFactory;
 import com.netflix.zuul.context.SessionContext;
 import com.netflix.zuul.filters.ZuulFilter;
 import com.netflix.zuul.message.http.HttpHeaderNames;
-import io.netty.buffer.*;
-import io.netty.channel.Channel;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpContent;
@@ -45,8 +45,8 @@ import static org.junit.Assert.assertTrue;
  * Date: 2/20/15
  * Time: 3:10 PM
  */
-public class ZuulMessageImpl implements ZuulMessage
-{
+// TODO: 2018/7/9 by zmyer
+public class ZuulMessageImpl implements ZuulMessage {
     protected static final DynamicIntProperty MAX_BODY_SIZE_PROP = DynamicPropertyFactory.getInstance().getIntProperty(
             "zuul.message.body.max.size", 25 * 1000 * 1024);
     private static final Charset CS_UTF8 = Charset.forName("UTF-8");
@@ -109,7 +109,7 @@ public class ZuulMessageImpl implements ZuulMessage
     public void bufferBodyContents(final HttpContent chunk) {
         setHasBody(true);
         bodyChunks.add(chunk);
-        if (chunk instanceof  LastHttpContent) {
+        if (chunk instanceof LastHttpContent) {
             bodyBufferedCompletely = true;
         }
     }
@@ -122,7 +122,7 @@ public class ZuulMessageImpl implements ZuulMessage
     @Override
     public void setBodyAsText(String bodyText) {
         disposeBufferedBody();
-        if (! Strings.isNullOrEmpty(bodyText)) {
+        if (!Strings.isNullOrEmpty(bodyText)) {
             final ByteBuf content = Unpooled.copiedBuffer(bodyText.getBytes(Charsets.UTF_8));
             bufferBodyContents(new DefaultLastHttpContent(content));
             setContentLength(bodyText.getBytes(CS_UTF8).length);
@@ -188,7 +188,7 @@ public class ZuulMessageImpl implements ZuulMessage
 
     @Override
     public boolean finishBufferedBodyIfIncomplete() {
-        if (! bodyBufferedCompletely) {
+        if (!bodyBufferedCompletely) {
             bufferBodyContents(new DefaultLastHttpContent());
             return true;
         }
@@ -209,7 +209,7 @@ public class ZuulMessageImpl implements ZuulMessage
     public void runBufferedBodyContentThroughFilter(ZuulFilter filter) {
         //Loop optimized for the common case: Most filters' processContentChunk() return
         // original chunk passed in as is without any processing
-        for (int i=0; i < bodyChunks.size(); i++) {
+        for (int i = 0; i < bodyChunks.size(); i++) {
             final HttpContent origChunk = bodyChunks.get(i);
             final HttpContent filteredChunk = filter.processContentChunk(this, origChunk);
             if ((filteredChunk != null) && (filteredChunk != origChunk)) {
@@ -239,17 +239,14 @@ public class ZuulMessageImpl implements ZuulMessage
      * @return
      */
     @Override
-    public String getInfoForLogging()
-    {
+    public String getInfoForLogging() {
         return "ZuulMessage";
     }
 
     @RunWith(MockitoJUnitRunner.class)
-    public static class UnitTest
-    {
+    public static class UnitTest {
         @Test
-        public void testClone()
-        {
+        public void testClone() {
             SessionContext ctx1 = new SessionContext();
             ctx1.set("k1", "v1");
             Headers headers1 = new Headers();

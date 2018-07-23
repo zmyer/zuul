@@ -23,7 +23,11 @@ import com.netflix.netty.common.LeastConnsEventLoopChooserFactory;
 import com.netflix.netty.common.metrics.EventLoopGroupMetrics;
 import com.netflix.netty.common.status.ServerStatusManager;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.DefaultSelectStrategyFactory;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollChannelOption;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
@@ -54,13 +58,15 @@ import java.util.concurrent.TimeUnit;
  * Date: 11/8/14
  * Time: 8:39 PM
  */
-public class Server
-{
-    public static final DynamicBooleanProperty USE_EPOLL = new DynamicBooleanProperty("zuul.server.netty.socket.epoll", false);
+// TODO: 2018/7/2 by zmyer
+public class Server {
+    public static final DynamicBooleanProperty USE_EPOLL = new DynamicBooleanProperty("zuul.server.netty.socket.epoll",
+            false);
 
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
-    private static final DynamicBooleanProperty USE_LEASTCONNS_FOR_EVENTLOOPS = new DynamicBooleanProperty("zuul.server.eventloops.use_leastconns", false);
+    private static final DynamicBooleanProperty USE_LEASTCONNS_FOR_EVENTLOOPS = new DynamicBooleanProperty(
+            "zuul.server.eventloops.use_leastconns", false);
 
     private final EventLoopGroupMetrics eventLoopGroupMetrics;
 
@@ -72,13 +78,15 @@ public class Server
     private final Map<Integer, ChannelInitializer> portsToChannelInitializers;
     private final EventLoopConfig eventLoopConfig;
 
-    public Server(Map<Integer, ChannelInitializer> portsToChannelInitializers, ServerStatusManager serverStatusManager, ClientConnectionsShutdown clientConnectionsShutdown, EventLoopGroupMetrics eventLoopGroupMetrics)
-    {
-        this(portsToChannelInitializers, serverStatusManager, clientConnectionsShutdown, eventLoopGroupMetrics, new DefaultEventLoopConfig());
+    public Server(Map<Integer, ChannelInitializer> portsToChannelInitializers, ServerStatusManager serverStatusManager,
+            ClientConnectionsShutdown clientConnectionsShutdown, EventLoopGroupMetrics eventLoopGroupMetrics) {
+        this(portsToChannelInitializers, serverStatusManager, clientConnectionsShutdown, eventLoopGroupMetrics,
+                new DefaultEventLoopConfig());
     }
 
-    public Server(Map<Integer, ChannelInitializer> portsToChannelInitializers, ServerStatusManager serverStatusManager, ClientConnectionsShutdown clientConnectionsShutdown, EventLoopGroupMetrics eventLoopGroupMetrics, EventLoopConfig eventLoopConfig)
-    {
+    public Server(Map<Integer, ChannelInitializer> portsToChannelInitializers, ServerStatusManager serverStatusManager,
+            ClientConnectionsShutdown clientConnectionsShutdown, EventLoopGroupMetrics eventLoopGroupMetrics,
+            EventLoopConfig eventLoopConfig) {
         this.portsToChannelInitializers = portsToChannelInitializers;
         this.serverStatusManager = serverStatusManager;
         this.clientConnectionsShutdown = clientConnectionsShutdown;
@@ -87,8 +95,7 @@ public class Server
         this.jvmShutdownHook = new Thread(() -> stop(), "Zuul-JVM-shutdown-hook");
     }
 
-    public void stop()
-    {
+    public void stop() {
         LOG.warn("Shutting down Zuul.");
         serverGroup.stop();
 
@@ -102,38 +109,34 @@ public class Server
         LOG.warn("Completed zuul shutdown.");
     }
 
-    public void start(boolean sync)
-    {
-        serverGroup = new ServerGroup("Salamander", eventLoopConfig.acceptorCount(), eventLoopConfig.eventLoopCount(), eventLoopGroupMetrics);
+    public void start(boolean sync) {
+        serverGroup = new ServerGroup("Salamander", eventLoopConfig.acceptorCount(), eventLoopConfig.eventLoopCount(),
+                eventLoopGroupMetrics);
         serverGroup.initializeTransport();
         try {
             List<ChannelFuture> allBindFutures = new ArrayList<>();
 
             // Setup each of the channel initializers on requested ports.
-            for (Map.Entry<Integer, ChannelInitializer> entry : portsToChannelInitializers.entrySet())
-            {
+            for (Map.Entry<Integer, ChannelInitializer> entry : portsToChannelInitializers.entrySet()) {
                 allBindFutures.add(setupServerBootstrap(entry.getKey(), entry.getValue()));
             }
 
             // Once all server bootstraps are successfully initialized, then bind to each port.
-            for (ChannelFuture f: allBindFutures) {
+            for (ChannelFuture f : allBindFutures) {
                 // Wait until the server socket is closed.
                 ChannelFuture cf = f.channel().closeFuture();
                 if (sync) {
                     cf.sync();
                 }
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
     /** This is just for use in unit-testing. */
-    public void waitForEachEventLoop() throws InterruptedException, ExecutionException
-    {
-        for (EventExecutor exec : serverGroup.clientToProxyWorkerPool)
-        {
+    public void waitForEachEventLoop() throws InterruptedException, ExecutionException {
+        for (EventExecutor exec : serverGroup.clientToProxyWorkerPool) {
             exec.submit(() -> {
                 // Do nothing.
             }).get();
@@ -141,8 +144,7 @@ public class Server
     }
 
     private ChannelFuture setupServerBootstrap(int port, ChannelInitializer channelInitializer)
-            throws InterruptedException
-    {
+            throws InterruptedException {
         ServerBootstrap serverBootstrap = new ServerBootstrap().group(
                 serverGroup.clientToProxyBossPool,
                 serverGroup.clientToProxyWorkerPool);
@@ -160,8 +162,7 @@ public class Server
             LOG.warn("Proxy listening with TCP transport using EPOLL");
             serverBootstrap = serverBootstrap.channel(EpollServerSocketChannel.class);
             channelOptions.put(EpollChannelOption.TCP_DEFER_ACCEPT, Integer.valueOf(-1));
-        }
-        else {
+        } else {
             LOG.warn("Proxy listening with TCP transport using NIO");
             serverBootstrap = serverBootstrap.channel(NioServerSocketChannel.class);
         }
@@ -189,13 +190,13 @@ public class Server
      * @param clientToProxyBossPool - acceptor pool
      * @param clientToProxyWorkerPool - worker pool
      */
-    public void postEventLoopCreationHook(EventLoopGroup clientToProxyBossPool, EventLoopGroup clientToProxyWorkerPool) {
+    public void postEventLoopCreationHook(EventLoopGroup clientToProxyBossPool,
+            EventLoopGroup clientToProxyWorkerPool) {
 
     }
 
 
-    private class ServerGroup
-    {
+    private class ServerGroup {
         /** A name for this ServerGroup to use in naming threads. */
         private final String name;
         private final int acceptorThreads;
@@ -207,7 +208,8 @@ public class Server
 
         private volatile boolean stopped = false;
 
-        private ServerGroup(String name, int acceptorThreads, int workerThreads, EventLoopGroupMetrics eventLoopGroupMetrics) {
+        private ServerGroup(String name, int acceptorThreads, int workerThreads,
+                EventLoopGroupMetrics eventLoopGroupMetrics) {
             this.name = name;
             this.acceptorThreads = acceptorThreads;
             this.workerThreads = workerThreads;
@@ -222,8 +224,7 @@ public class Server
             Runtime.getRuntime().addShutdownHook(new Thread(() -> stop(), "Zuul-ServerGroup-JVM-shutdown-hook"));
         }
 
-        private void initializeTransport()
-        {
+        private void initializeTransport() {
             // TODO - try our own impl of ChooserFactory that load-balances across the eventloops using leastconns algo?
             EventExecutorChooserFactory chooserFactory;
             if (USE_LEASTCONNS_FOR_EVENTLOOPS.get()) {
@@ -245,8 +246,7 @@ public class Server
                         chooserFactory,
                         DefaultSelectStrategyFactory.INSTANCE
                 );
-            }
-            else {
+            } else {
                 clientToProxyBossPool = new NioEventLoopGroup(
                         acceptorThreads,
                         new CategorizedThreadFactory(name + "-ClientToZuulAcceptor"));
@@ -263,8 +263,7 @@ public class Server
             postEventLoopCreationHook(clientToProxyBossPool, clientToProxyWorkerPool);
         }
 
-        synchronized private void stop()
-        {
+        synchronized private void stop() {
             LOG.warn("Shutting down");
             if (stopped) {
                 LOG.warn("Already stopped");

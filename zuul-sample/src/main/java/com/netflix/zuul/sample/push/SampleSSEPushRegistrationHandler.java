@@ -7,7 +7,13 @@ import com.netflix.zuul.netty.server.push.PushRegistrationHandler;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpContentCompressor;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -16,10 +22,13 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 /**
  * Created by saroskar on 10/10/16.
  */
+// TODO: 2018/7/6 by zmyer
 public class SampleSSEPushRegistrationHandler extends PushRegistrationHandler {
 
-    public static final CachedDynamicIntProperty SSE_RETRY_BASE_INTERVAL = new CachedDynamicIntProperty("zuul.push.sse.retry.base", 5000);
-    public static final CachedDynamicIntProperty SSE_RETRY_RANDOM_RANGE = new CachedDynamicIntProperty("zuul.push.sse.retry.random.range", 5000);
+    public static final CachedDynamicIntProperty SSE_RETRY_BASE_INTERVAL = new CachedDynamicIntProperty(
+            "zuul.push.sse.retry.base", 5000);
+    public static final CachedDynamicIntProperty SSE_RETRY_RANDOM_RANGE = new CachedDynamicIntProperty(
+            "zuul.push.sse.retry.random.range", 5000);
 
     public SampleSSEPushRegistrationHandler(PushConnectionRegistry pushConnectionRegistry) {
         super(pushConnectionRegistry, PushProtocol.SSE);
@@ -27,7 +36,7 @@ public class SampleSSEPushRegistrationHandler extends PushRegistrationHandler {
 
     @Override
     protected void handleRead(final ChannelHandlerContext ctx, Object mesg) {
-        if (mesg instanceof  FullHttpRequest) {
+        if (mesg instanceof FullHttpRequest) {
             final FullHttpRequest req = (FullHttpRequest) mesg;
             if ((req.method() == HttpMethod.GET) && (pushProtocol.getPath().equals(req.uri()))) {
                 ctx.pipeline().fireUserEventTriggered(PushProtocol.SSE.getHandshakeCompleteEvent());

@@ -22,22 +22,21 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
-import io.netty.handler.codec.http.websocketx.extensions.compression.WebSocketServerCompressionHandler;
 
 /**
  * Author: Susheel Aroskar
  * Date: 5/15/18
  */
+// TODO: 2018/7/9 by zmyer
 public abstract class PushChannelInitializer extends BaseZuulChannelInitializer {
 
 
     public PushChannelInitializer(int port, ChannelConfig channelConfig, ChannelConfig channelDependencies,
-                                  ChannelGroup channels) {
-
+            ChannelGroup channels) {
         super(port, channelConfig, channelDependencies, channels);
     }
 
+    // TODO: 2018/7/9 by zmyer
     @Override
     protected void addHttp1Handlers(ChannelPipeline pipeline) {
         pipeline.addLast(HTTP_CODEC_HANDLER_NAME, new HttpServerCodec(
@@ -49,7 +48,7 @@ public abstract class PushChannelInitializer extends BaseZuulChannelInitializer 
         pipeline.addLast(new HttpObjectAggregator(8192));
     }
 
-
+    // TODO: 2018/7/9 by zmyer
     @Override
     protected void initChannel(Channel ch) throws Exception {
         final ChannelPipeline pipeline = ch.pipeline();
@@ -58,7 +57,6 @@ public abstract class PushChannelInitializer extends BaseZuulChannelInitializer 
         addHttp1Handlers(pipeline);
         addPushHandlers(pipeline);
     }
-
 
     protected abstract void addPushHandlers(final ChannelPipeline pipeline);
 

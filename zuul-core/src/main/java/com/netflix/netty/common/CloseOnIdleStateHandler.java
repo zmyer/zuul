@@ -22,11 +22,10 @@ import io.netty.handler.timeout.IdleStateEvent;
 /**
  * Just listens for the IdleStateEvent and closes the channel if received.
  */
-public class CloseOnIdleStateHandler extends ChannelInboundHandlerAdapter
-{
+// TODO: 2018/7/4 by zmyer
+public class CloseOnIdleStateHandler extends ChannelInboundHandlerAdapter {
     @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception
-    {
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         super.userEventTriggered(ctx, evt);
 
         if (evt instanceof IdleStateEvent) {

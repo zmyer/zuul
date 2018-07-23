@@ -26,6 +26,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 /**
  * Created by saroskar on 10/10/16.
  */
+// TODO: 2018/7/9 by zmyer
 public enum PushProtocol {
 
     WEBSOCKET {
@@ -80,7 +81,7 @@ public enum PushProtocol {
             return ctx.channel().writeAndFlush(newBuff);
         }
 
-        private static final String  SSE_PING = "event: ping\r\ndata: ping\r\n\r\n";
+        private static final String SSE_PING = "event: ping\r\ndata: ping\r\n\r\n";
 
         @Override
         public ChannelFuture sendPing(ChannelHandlerContext ctx) {
@@ -92,8 +93,11 @@ public enum PushProtocol {
     };
 
     public abstract Object getHandshakeCompleteEvent();
+
     public abstract String getPath();
+
     public abstract ChannelFuture sendPushMessage(ChannelHandlerContext ctx, ByteBuf mesg);
+
     public abstract ChannelFuture sendPing(ChannelHandlerContext ctx);
 
 }

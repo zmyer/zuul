@@ -13,12 +13,14 @@ import io.netty.channel.group.ChannelGroup;
  * Author: Susheel Aroskar
  * Date: 6/8/18
  */
+// TODO: 2018/7/6 by zmyer
 public class SampleSSEPushChannelInitializer extends PushChannelInitializer {
 
     private final PushConnectionRegistry pushConnectionRegistry;
     private final PushAuthHandler pushAuthHandler;
 
-    public SampleSSEPushChannelInitializer(int port, ChannelConfig channelConfig, ChannelConfig channelDependencies, ChannelGroup channels) {
+    public SampleSSEPushChannelInitializer(int port, ChannelConfig channelConfig, ChannelConfig channelDependencies,
+            ChannelGroup channels) {
         super(port, channelConfig, channelDependencies, channels);
         pushConnectionRegistry = channelDependencies.get(ZuulDependencyKeys.pushConnectionRegistry);
         pushAuthHandler = new SamplePushAuthHandler(PushProtocol.SSE.getPath());

@@ -28,6 +28,7 @@ import com.netflix.zuul.netty.server.Server;
  * Author: Arthur Gonigberg
  * Date: November 20, 2017
  */
+// TODO: 2018/7/2 by zmyer
 public class Bootstrap {
 
     public static void main(String[] args) {
@@ -51,17 +52,17 @@ public class Bootstrap {
             System.out.println("Zuul Sample: finished startup. Duration = " + startupDuration + " ms");
 
             server.start(true);
-        }
-        catch (Throwable t) {
+        } catch (Throwable t) {
             t.printStackTrace();
             System.err.println("###############");
             System.err.println("Zuul Sample: initialization failed. Forcing shutdown now.");
             System.err.println("###############");
             exitCode = 1;
-        }
-        finally {
+        } finally {
             // server shutdown
-            if (server != null) server.stop();
+            if (server != null) {
+                server.stop();
+            }
 
             System.exit(exitCode);
         }

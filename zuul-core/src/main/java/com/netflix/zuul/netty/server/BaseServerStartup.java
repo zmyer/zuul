@@ -47,8 +47,8 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.util.Map;
 
-public abstract class BaseServerStartup
-{
+// TODO: 2018/7/2 by zmyer
+public abstract class BaseServerStartup {
     protected static final Logger LOG = LoggerFactory.getLogger(BaseServerStartup.class);
 
     protected final ServerStatusManager serverStatusManager;
@@ -70,12 +70,11 @@ public abstract class BaseServerStartup
 
     @Inject
     public BaseServerStartup(ServerStatusManager serverStatusManager, FilterLoader filterLoader,
-                             SessionContextDecorator sessionCtxDecorator, FilterUsageNotifier usageNotifier,
-                             RequestCompleteHandler reqCompleteHandler, Registry registry,
-                             DirectMemoryMonitor directMemoryMonitor, EventLoopGroupMetrics eventLoopGroupMetrics,
-                             EurekaClient discoveryClient, ApplicationInfoManager applicationInfoManager,
-                             AccessLogPublisher accessLogPublisher)
-    {
+            SessionContextDecorator sessionCtxDecorator, FilterUsageNotifier usageNotifier,
+            RequestCompleteHandler reqCompleteHandler, Registry registry,
+            DirectMemoryMonitor directMemoryMonitor, EventLoopGroupMetrics eventLoopGroupMetrics,
+            EurekaClient discoveryClient, ApplicationInfoManager applicationInfoManager,
+            AccessLogPublisher accessLogPublisher) {
         this.serverStatusManager = serverStatusManager;
         this.registry = registry;
         this.directMemoryMonitor = directMemoryMonitor;
@@ -89,14 +88,12 @@ public abstract class BaseServerStartup
         this.usageNotifier = usageNotifier;
     }
 
-    public Server server()
-    {
+    public Server server() {
         return server;
     }
 
     @PostConstruct
-    public void init() throws Exception
-    {
+    public void init() throws Exception {
         ChannelConfig channelDeps = new ChannelConfig();
         addChannelDependencies(channelDeps);
 
@@ -106,15 +103,16 @@ public abstract class BaseServerStartup
 
         portsToChannelInitializers = choosePortsAndChannels(clientChannels, channelDeps);
 
-        server = new Server(portsToChannelInitializers, serverStatusManager, clientConnectionsShutdown, eventLoopGroupMetrics);
+        server = new Server(portsToChannelInitializers, serverStatusManager, clientConnectionsShutdown,
+                eventLoopGroupMetrics);
     }
 
+    // TODO: 2018/7/2 by zmyer
     protected abstract Map<Integer, ChannelInitializer> choosePortsAndChannels(
             ChannelGroup clientChannels,
             ChannelConfig channelDependencies);
 
-    protected void addChannelDependencies(ChannelConfig channelDeps) throws Exception
-    {
+    protected void addChannelDependencies(ChannelConfig channelDeps) throws Exception {
         channelDeps.set(ZuulDependencyKeys.registry, registry);
 
         channelDeps.set(ZuulDependencyKeys.applicationInfoManager, applicationInfoManager);
@@ -124,7 +122,8 @@ public abstract class BaseServerStartup
 
         channelDeps.set(ZuulDependencyKeys.sessionCtxDecorator, sessionCtxDecorator);
         channelDeps.set(ZuulDependencyKeys.requestCompleteHandler, reqCompleteHandler);
-        final BasicCounter httpRequestReadTimeoutCounter =  new BasicCounter(MonitorConfig.builder("server.http.request.read.timeout").build());
+        final BasicCounter httpRequestReadTimeoutCounter = new BasicCounter(
+                MonitorConfig.builder("server.http.request.read.timeout").build());
         DefaultMonitorRegistry.getInstance().register(httpRequestReadTimeoutCounter);
         channelDeps.set(ZuulDependencyKeys.httpRequestReadTimeoutCounter, httpRequestReadTimeoutCounter);
         channelDeps.set(ZuulDependencyKeys.filterLoader, filterLoader);
@@ -138,9 +137,8 @@ public abstract class BaseServerStartup
         directMemoryMonitor.init();
     }
 
-
-    public static ChannelConfig defaultChannelConfig()
-    {
+    // TODO: 2018/7/9 by zmyer
+    public static ChannelConfig defaultChannelConfig() {
         ChannelConfig config = new ChannelConfig();
 
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.maxConnections,
@@ -148,16 +146,19 @@ public abstract class BaseServerStartup
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.maxRequestsPerConnection,
                 new DynamicIntProperty("server.connection.max.requests", 20000).get()));
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.maxRequestsPerConnectionInBrownout,
-                new DynamicIntProperty("server.connection.max.requests.brownout", CommonChannelConfigKeys.maxRequestsPerConnectionInBrownout.defaultValue()).get()));
+                new DynamicIntProperty("server.connection.max.requests.brownout",
+                        CommonChannelConfigKeys.maxRequestsPerConnectionInBrownout.defaultValue()).get()));
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.connectionExpiry,
-                new DynamicIntProperty("server.connection.expiry", CommonChannelConfigKeys.connectionExpiry.defaultValue()).get()));
+                new DynamicIntProperty("server.connection.expiry",
+                        CommonChannelConfigKeys.connectionExpiry.defaultValue()).get()));
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.idleTimeout,
                 new DynamicIntProperty("server.connection.idle.timeout", 65 * 1000).get()));
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.httpRequestReadTimeout,
                 new DynamicIntProperty("server.http.request.read.timeout", 5000).get()));
 
         // For security, default to NEVER allowing XFF/Proxy headers from client.
-        config.add(new ChannelConfigValue(CommonChannelConfigKeys.allowProxyHeadersWhen, StripUntrustedProxyHeadersHandler.AllowWhen.NEVER));
+        config.add(new ChannelConfigValue(CommonChannelConfigKeys.allowProxyHeadersWhen,
+                StripUntrustedProxyHeadersHandler.AllowWhen.NEVER));
 
         config.set(CommonChannelConfigKeys.withProxyProtocol, true);
         config.set(CommonChannelConfigKeys.preferProxyProtocolForClientIp, true);
@@ -170,9 +171,11 @@ public abstract class BaseServerStartup
 
     public static void addHttp2DefaultConfig(ChannelConfig config) {
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.maxConcurrentStreams,
-                new DynamicIntProperty("server.http2.max.concurrent.streams", CommonChannelConfigKeys.maxConcurrentStreams.defaultValue()).get()));
+                new DynamicIntProperty("server.http2.max.concurrent.streams",
+                        CommonChannelConfigKeys.maxConcurrentStreams.defaultValue()).get()));
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.initialWindowSize,
-                new DynamicIntProperty("server.http2.initialwindowsize", CommonChannelConfigKeys.initialWindowSize.defaultValue()).get()));
+                new DynamicIntProperty("server.http2.initialwindowsize",
+                        CommonChannelConfigKeys.initialWindowSize.defaultValue()).get()));
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.maxHttp2HeaderTableSize,
                 new DynamicIntProperty("server.http2.maxheadertablesize", 65536).get()));
         config.add(new ChannelConfigValue(CommonChannelConfigKeys.maxHttp2HeaderListSize,
@@ -184,8 +187,7 @@ public abstract class BaseServerStartup
                 new DynamicIntProperty("server.connection.max.requests", 4000).get()));
     }
 
-    protected void logPortConfigured(int port, ServerSslConfig serverSslConfig)
-    {
+    protected void logPortConfigured(int port, ServerSslConfig serverSslConfig) {
         String msg = "Configured port: " + port;
         if (serverSslConfig != null) {
             msg = msg + " with SSL config: " + serverSslConfig.toString();

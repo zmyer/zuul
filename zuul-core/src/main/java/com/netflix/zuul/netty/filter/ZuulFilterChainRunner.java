@@ -33,16 +33,19 @@ import java.util.concurrent.atomic.AtomicInteger;
  * This class is supposed to be thread safe and hence should not have any non final member variables
  * Created by saroskar on 5/17/17.
  */
+// TODO: 2018/7/4 by zmyer
 @ThreadSafe
 public class ZuulFilterChainRunner<T extends ZuulMessage> extends BaseZuulFilterRunner<T, T> {
 
     private final ZuulFilter<T, T>[] filters;
 
-    public ZuulFilterChainRunner(ZuulFilter<T, T>[] zuulFilters, FilterUsageNotifier usageNotifier, FilterRunner<T, ?> nextStage) {
+    public ZuulFilterChainRunner(ZuulFilter<T, T>[] zuulFilters, FilterUsageNotifier usageNotifier,
+            FilterRunner<T, ?> nextStage) {
         super(zuulFilters[0].filterType(), usageNotifier, nextStage);
         this.filters = zuulFilters;
     }
 
+    // TODO: 2018/7/10 by zmyer
     public ZuulFilterChainRunner(ZuulFilter<T, T>[] zuulFilters, FilterUsageNotifier usageNotifier) {
         this(zuulFilters, usageNotifier, null);
     }
@@ -79,8 +82,7 @@ public class ZuulFilterChainRunner<T extends ZuulMessage> extends BaseZuulFilter
 
             //Filter chain has reached its end, pass result to the next stage
             invokeNextStage(inMesg);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             handleException(inMesg, filterName, ex);
         }
     }
@@ -96,9 +98,9 @@ public class ZuulFilterChainRunner<T extends ZuulMessage> extends BaseZuulFilter
             for (int i = 0; i < limit; i++) {
                 final ZuulFilter<T, T> filter = filters[i];
                 filterName = filter.filterName();
-                if ((! filter.isDisabled()) && (! shouldSkipFilter(inMesg, filter))) {
+                if ((!filter.isDisabled()) && (!shouldSkipFilter(inMesg, filter))) {
                     final HttpContent newChunk = filter.processContentChunk(inMesg, chunk);
-                    if (newChunk == null)  {
+                    if (newChunk == null) {
                         //Filter wants to break the chain and stop propagating this chunk any further
                         return;
                     }
@@ -127,8 +129,7 @@ public class ZuulFilterChainRunner<T extends ZuulMessage> extends BaseZuulFilter
                         } else if (inMesg instanceof HttpResponseMessage) {
                             passport.addIfNotAlready(PassportState.FILTERS_OUTBOUND_BUF_END);
                         }
-                    }
-                    else {
+                    } else {
                         if (inMesg instanceof HttpRequestMessage) {
                             passport.addIfNotAlready(PassportState.FILTERS_INBOUND_BUF_START);
                         } else if (inMesg instanceof HttpResponseMessage) {
@@ -142,8 +143,7 @@ public class ZuulFilterChainRunner<T extends ZuulMessage> extends BaseZuulFilter
                     runFilters(inMesg, runningFilterIdx);
                 }
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             handleException(inMesg, filterName, ex);
         }
     }

@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
  * Date: 3/5/16
  * Time: 5:41 PM
  */
+// TODO: 2018/7/6 by zmyer
 public class Http2SslChannelInitializer extends BaseZuulChannelInitializer {
     private static final Logger LOG = LoggerFactory.getLogger(Http2SslChannelInitializer.class);
     private static final DummyChannelHandler DUMMY_HANDLER = new DummyChannelHandler();
@@ -48,9 +49,9 @@ public class Http2SslChannelInitializer extends BaseZuulChannelInitializer {
 
 
     public Http2SslChannelInitializer(int port,
-                                      ChannelConfig channelConfig,
-                                      ChannelConfig channelDependencies,
-                                      ChannelGroup channels) {
+            ChannelConfig channelConfig,
+            ChannelConfig channelDependencies,
+            ChannelGroup channels) {
         super(port, channelConfig, channelDependencies, channels);
 
         this.serverSslConfig = channelConfig.get(CommonChannelConfigKeys.serverSslConfig);
@@ -91,12 +92,16 @@ public class Http2SslChannelInitializer extends BaseZuulChannelInitializer {
         addSslInfoHandlers(pipeline, isSSlFromIntermediary);
         addSslClientCertChecks(pipeline);
 
-        Http2MetricsChannelHandlers http2MetricsChannelHandlers = new Http2MetricsChannelHandlers(registry,"server", "http2-" + port);
-        Http2ConnectionCloseHandler connectionCloseHandler = new Http2ConnectionCloseHandler(channelConfig.get(CommonChannelConfigKeys.connCloseDelay));
-        Http2ConnectionExpiryHandler connectionExpiryHandler = new Http2ConnectionExpiryHandler(maxRequestsPerConnection, maxRequestsPerConnectionInBrownout, connectionExpiry);
+        Http2MetricsChannelHandlers http2MetricsChannelHandlers = new Http2MetricsChannelHandlers(registry, "server",
+                "http2-" + port);
+        Http2ConnectionCloseHandler connectionCloseHandler = new Http2ConnectionCloseHandler(
+                channelConfig.get(CommonChannelConfigKeys.connCloseDelay));
+        Http2ConnectionExpiryHandler connectionExpiryHandler = new Http2ConnectionExpiryHandler(
+                maxRequestsPerConnection, maxRequestsPerConnectionInBrownout, connectionExpiry);
 
         pipeline.addLast("http2CodecSwapper", new Http2OrHttpHandler(
-                new Http2StreamInitializer(ch, this::http1Handlers, http2MetricsChannelHandlers, connectionCloseHandler, connectionExpiryHandler),
+                new Http2StreamInitializer(ch, this::http1Handlers, http2MetricsChannelHandlers, connectionCloseHandler,
+                        connectionExpiryHandler),
                 channelConfig,
                 cp -> {
                     http1Codec(cp);
